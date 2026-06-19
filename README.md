@@ -49,12 +49,12 @@ O banco de dados é gerido via Prisma e possui as seguintes entidades principais
 
 3. **Configuração de Variáveis de Ambiente:**
     ```Code Snippet
-  # Configuração do Banco de Dados
-  DATABASE_URL="postgresql://usuario:senha@localhost:5432/gcm_convocacao?schema=public"
+      # Configuração do Banco de Dados
+      DATABASE_URL="postgresql://usuario:senha@localhost:5432/gcm_convocacao?schema=public"
 
-  # Configuração do NextAuth
-  NEXTAUTH_SECRET="sua_chave_secreta_aqui"
-  NEXTAUTH_URL="http://localhost:3000"
+      # Configuração do NextAuth
+      NEXTAUTH_SECRET="sua_chave_secreta_aqui"
+      NEXTAUTH_URL="http://localhost:3000"
 
 4. **Prepare o Banco de Dados (Prisma):**
    ```bash
