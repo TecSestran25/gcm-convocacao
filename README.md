@@ -71,7 +71,7 @@ O banco de dados é gerido via Prisma e possui as seguintes entidades principais
 
 # Status de Desenvolvimento - GCM Convocação (MVP)
 
-**Data da última atualização:** [Insira a data atual]
+**Data da última atualização:** 18/06/26 \
 **Fase Atual:** Desenvolvimento Ativo do MVP (Fase 1)
 
 O desenvolvimento da aplicação já foi iniciado e a arquitetura base do sistema encontra-se estabelecida. Abaixo está o mapeamento do que já foi estruturado e quais são os próximos passos.
