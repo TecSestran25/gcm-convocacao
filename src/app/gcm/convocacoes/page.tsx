@@ -8,12 +8,12 @@ export default async function ConvocacoesGcmPage() {
   const session = await auth()
   const gcmId = session?.user?.id
 
-  // 1. Procura todos os eventos criados pela chefia
+  // Procura todos os eventos criados pela chefia
   const eventos = await prisma.evento.findMany({
     orderBy: { dataServico: 'asc' }
   })
 
-  // 2. Procura as respostas que este guarda específico já deu
+  // Procura as respostas que este guarda específico já deu
   const minhasRespostas = await prisma.convocacao.findMany({
     where: { gcmId }
   })

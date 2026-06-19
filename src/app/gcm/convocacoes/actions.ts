@@ -31,6 +31,6 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
     }
   })
 
-  // Força o ecrã a atualizar os dados na hora
+  // Força a atualizar os dados na hora
   revalidatePath("/gcm/convocacoes")
 }
