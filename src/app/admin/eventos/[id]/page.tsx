@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/admin/eventos/[id]/page.tsx
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BotaoImprimir } from "@/components/BotaoImprimir"
+import { BotaoPresenca } from "@/components/BotaoPresenca"
 
 export default async function DetalhesEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
@@ -85,16 +87,11 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {convocacao.status === "ACEITO" && (
-                      <form action={homologarGuarda.bind(null, resolvedParams.id, convocacao.gcmId)}>
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={limiteAtingido}>Homologar</Button>
-                      </form>
-                    )}
-                    {convocacao.status === "CONFIRMADO" && (
-                      <form action={removerHomologacao.bind(null, resolvedParams.id, convocacao.gcmId)}>
-                        <Button size="sm" variant="outline" className="text-slate-500">Remover da Escala</Button>
-                      </form>
-                    )}
+                    <BotaoPresenca 
+                      eventoId={resolvedParams.id} 
+                      gcmId={convocacao.gcmId} 
+                      statusAtual={convocacao.status} 
+                    />
                   </TableCell>
                 </TableRow>
               ))}

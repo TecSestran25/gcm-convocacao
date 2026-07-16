@@ -44,11 +44,7 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
       {/* FORMULÁRIO (Responsivo)                    */}
       {/* ========================================== */}
       <div className="bg-white p-4 rounded-md border border-slate-200">
-        <form action={criarEvento} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 items-end">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Código</label>
-            <Input name="codigo" required placeholder="Ex: GECP_001" />
-          </div>
+        <form action={criarEvento} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
           <div className="space-y-1">
             <label className="text-sm font-medium">Data</label>
             <Input name="dataServico" type="date" required />
@@ -57,7 +53,7 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
             <label className="text-sm font-medium">Horário</label>
             <Input name="horario" required placeholder="Ex: 08:00 - 20:00" />
           </div>
-          <div className="space-y-1 sm:col-span-2 md:col-span-2">
+          <div className="space-y-1 sm:col-span-2 md:col-span-1">
             <label className="text-sm font-medium">Local/Missão</label>
             <Input name="local" required placeholder="Ex: PATRULHAMENTO" />
           </div>
@@ -69,7 +65,7 @@ export default async function EventosPage({ searchParams }: { searchParams: Prom
             <label className="text-sm font-medium">Equipe Alvo</label>
             <Input name="equipePrioritaria" required placeholder="Ex: ALFA" />
           </div>
-          <Button type="submit" className="sm:col-span-2 md:col-span-6 w-full">Publicar Convocação</Button>
+          <Button type="submit" className="sm:col-span-2 md:col-span-5 w-full">Publicar Convocação</Button>
         </form>
       </div>
 
