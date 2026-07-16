@@ -93,3 +93,12 @@ model Convocacao {
   // Garante que o mesmo GCM não seja convocado 2x pro mesmo evento
   @@unique([eventoId, gcmId]) 
 }
+
+model Notificacao {
+  id        String   @id @default(cuid())
+  titulo    String
+  mensagem  String
+  tipo      String   @default("INFO") // Pode ser SUCESSO, ERRO, AVISO
+  lida      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

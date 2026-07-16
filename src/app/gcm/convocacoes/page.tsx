@@ -8,12 +8,29 @@ export default async function ConvocacoesGcmPage() {
   const session = await auth()
   const gcmId = session?.user?.id
 
-  // Procura todos os eventos criados pela chefia
+  if (!gcmId) return null // Proteção de segurança
+
+  // 1. Busca os dados do guarda no banco para descobrir a sua equipa
+  const guarda = await prisma.usuario.findUnique({
+    where: { id: gcmId },
+    select: { equipe: true } // Trazemos apenas a equipa para ser mais rápido
+  })
+
+  const minhaEquipe = guarda?.equipe || ""
+
+  // 2. Procura APENAS os eventos direcionados para a equipa do guarda (ou eventos globais)
   const eventos = await prisma.evento.findMany({
+    where: {
+      OR: [
+        { equipePrioritaria: minhaEquipe },
+        { equipePrioritaria: "TODAS" },
+        { equipePrioritaria: "GERAL" }
+      ]
+    },
     orderBy: { dataServico: 'asc' }
   })
 
-  // Procura as respostas que este guarda específico já deu
+  // 3. Procura as respostas que este guarda específico já deu
   const minhasRespostas = await prisma.convocacao.findMany({
     where: { gcmId }
   })
@@ -31,7 +48,7 @@ export default async function ConvocacoesGcmPage() {
       <div className="space-y-4">
         {eventos.length === 0 && (
           <p className="text-slate-500 text-center py-8 bg-white rounded border">
-            Nenhum evento operacional publicado de momento.
+            Nenhum evento operacional direcionado à sua equipa ({minhaEquipe}) no momento.
           </p>
         )}
 
@@ -45,7 +62,8 @@ export default async function ConvocacoesGcmPage() {
                   <span className="font-bold text-slate-900">{evento.codigo}</span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                     statusAtual === "ACEITO" ? "bg-green-100 text-green-800" :
-                    statusAtual === "RECUSADO" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"
+                    statusAtual === "RECUSADO" ? "bg-red-100 text-red-800" : 
+                    statusAtual === "CONFIRMADO" ? "bg-blue-100 text-blue-800" : "bg-yellow-100 text-yellow-800"
                   }`}>
                     {statusAtual}
                   </span>
@@ -57,15 +75,19 @@ export default async function ConvocacoesGcmPage() {
                 <p className="text-xs text-slate-400">Equipa Alvo: {evento.equipePrioritaria}</p>
               </div>
 
-              {/* Botões com Server Actions acopladas */}
+              {/* Botões com bloqueio inteligente baseado no status atual */}
               <div className="flex gap-2 sm:self-center">
                 <form action={responderConvocacao.bind(null, evento.id, "ACEITO")}>
                   <Button 
                     type="submit" 
-                    variant={statusAtual === "ACEITO" ? "default" : "outline"}
-                    className={statusAtual === "ACEITO" ? "bg-green-600 hover:bg-green-700" : ""}
+                    variant={statusAtual === "ACEITO" || statusAtual === "CONFIRMADO" ? "default" : "outline"}
+                    className={
+                      statusAtual === "CONFIRMADO" ? "bg-blue-600 opacity-100" :
+                      statusAtual === "ACEITO" ? "bg-green-600 opacity-100" : ""
+                    }
+                    disabled={statusAtual === "ACEITO" || statusAtual === "CONFIRMADO"}
                   >
-                    Aceitar
+                    {statusAtual === "CONFIRMADO" ? "Confirmado" : statusAtual === "ACEITO" ? "✓ Aceito" : "Aceitar"}
                   </Button>
                 </form>
                 
@@ -73,8 +95,10 @@ export default async function ConvocacoesGcmPage() {
                   <Button 
                     type="submit" 
                     variant={statusAtual === "RECUSADO" ? "destructive" : "outline"}
+                    className={statusAtual === "RECUSADO" ? "opacity-100" : ""}
+                    disabled={statusAtual === "RECUSADO" || statusAtual === "CONFIRMADO"}
                   >
-                    Recusar
+                    {statusAtual === "RECUSADO" ? "✕ Recusado" : "Recusar"}
                   </Button>
                 </form>
               </div>
