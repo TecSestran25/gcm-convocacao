@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -15,11 +15,26 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1, // Impede que o usuário dê zoom sem querer no app
+}
 export const metadata: Metadata = {
-  title: "GCM Goiana - (GECP)",
-  description: "Sistema de Convocação Operacional (GECP)",
-};
+  title: "GCM Goiana | Operacional",
+  description: "Sistema de Convocação Operacional",
+  manifest: "/manifest.json",
+  icons: {
+    icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "GCM Goiana",
+  },
+}
 
 export default function RootLayout({
   children,

@@ -3,6 +3,7 @@ import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sininho } from "@/components/Sininho"
+import { Sidebar } from "@/components/Sidebar"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -35,9 +36,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </form>
         </div>
       </header>
-      <main className="flex-1 p-6">
-        {children}
-      </main>
+      <div className="flex bg-slate-50 min-h-screen">
+        <Sidebar />
+        <main className="flex-1 p-6">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
