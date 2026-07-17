@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    // !! AVISO: Isso desativa a checagem de tipos no build !!
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // !! AVISO: Isso desativa o ESLint no build !!
-    ignoreDuringBuilds: true,
-  },
+  // Removemos a chave 'eslint' daqui conforme o erro indicado
 }
 
 module.exports = nextConfig
