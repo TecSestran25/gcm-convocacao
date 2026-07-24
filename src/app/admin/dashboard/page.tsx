@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { AutoRefresh } from "@/components/AutoRefresh" // <-- Nosso motor de tempo real
 
 export default async function DashboardPage() {
   // 1. Busca os números gerais para os "Cards" de estatística
@@ -25,12 +26,15 @@ export default async function DashboardPage() {
     orderBy: { dataServico: 'asc' },
     take: 3,
     include: {
-      convocacoes: true // Incluímos as convocações para calcular o preenchimento das vagas
+      convocacoes: true 
     }
   })
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
+      {/* O Motor invisível rodando no Dashboard a cada 10 segundos */}
+      <AutoRefresh interval={10000} />
+
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Painel de Comando</h1>
         <p className="text-slate-500 mt-1">Visão geral do efetivo e convocações operacionais da GECP.</p>
@@ -114,10 +118,9 @@ export default async function DashboardPage() {
                         <span className="text-slate-500">Preenchimento:</span>
                         <span className="font-bold">{confirmados} / {evento.vagas}</span>
                       </div>
-                      {/* Barra de progresso visual simples */}
                       <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full ${confirmados >= evento.vagas ? 'bg-red-500' : 'bg-blue-500'}`} 
+                          className={`h-full transition-all duration-500 ${confirmados >= evento.vagas ? 'bg-red-500' : 'bg-blue-500'}`} 
                           style={{ width: `${Math.min((confirmados / evento.vagas) * 100, 100)}%` }}
                         ></div>
                       </div>

@@ -1,14 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/admin/eventos/[id]/page.tsx
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
-import { homologarGuarda, removerHomologacao } from "../actions"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BotaoImprimir } from "@/components/BotaoImprimir"
 import { BotaoPresenca } from "@/components/BotaoPresenca"
 import { BotaoAutomacao } from "@/components/BotaoAutomacao"
+import { AutoRefresh } from "@/components/AutoRefresh" // <-- Nosso motor de tempo real
 
 export default async function DetalhesEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
@@ -34,6 +32,8 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
 
   return (
     <div className="max-w-5xl mx-auto">
+      {/* O Motor invisível rodando a cada 10 segundos */}
+      <AutoRefresh interval={10000} />
       
       {/* ========================================== */}
       {/* VISÃO DA TELA (Escondida na impressão)     */}
