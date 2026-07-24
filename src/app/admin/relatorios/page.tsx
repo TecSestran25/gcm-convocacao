@@ -1,7 +1,7 @@
 // src/app/admin/relatorios/page.tsx
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { BarChart3, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
+import { BarChart3, CheckCircle2, XCircle, AlertTriangle, Users, Clock } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -14,17 +14,25 @@ export default async function RelatoriosPage() {
     },
     orderBy: { nome: 'asc' }
   })
-
+  
   // Processa os dados para gerar a tabela
+  // 1. Processa os dados de cada GCM primeiro (Sem mutar variáveis externas)
   const relatorio = gcms.map(gcm => {
     const totalMissoes = gcm.convocacoes.length
     const confirmados = gcm.convocacoes.filter(c => c.status === "CONFIRMADO").length
     const faltas = gcm.convocacoes.filter(c => c.status === ("FALTOU" as typeof c.status)).length
     const recusados = gcm.convocacoes.filter(c => c.status === "RECUSADO").length
     const pendentes = gcm.convocacoes.filter(c => c.status === "PENDENTE" || c.status === "ACEITO").length
+    
+    // Estimativa de 12 horas por plantão confirmado
+    const horasTrabalhadas = confirmados * 12
 
-    return { ...gcm, totalMissoes, confirmados, faltas, recusados, pendentes }
+    return { ...gcm, totalMissoes, confirmados, faltas, recusados, pendentes, horasTrabalhadas }
   })
+
+  const totalConfirmadosGeral = relatorio.reduce((acc, gcm) => acc + gcm.confirmados, 0)
+  const totalRecusasGeral = relatorio.reduce((acc, gcm) => acc + gcm.recusados, 0)
+  const totalFaltasGeral = relatorio.reduce((acc, gcm) => acc + gcm.faltas, 0)
 
   return (
     <div className="space-y-6">
@@ -33,6 +41,54 @@ export default async function RelatoriosPage() {
         <p className="text-slate-500">Histórico de produtividade e engajamento do efetivo.</p>
       </div>
 
+      {/* ========================================== */}
+      {/* PLACAR GERAL (Métricas do Comando)         */}
+      {/* ========================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="shadow-sm">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-blue-100 text-blue-700 rounded-lg"><Users className="w-6 h-6" /></div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Efetivo GCM</p>
+              <h3 className="text-2xl font-bold text-slate-900">{gcms.length}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-green-100 text-green-700 rounded-lg"><CheckCircle2 className="w-6 h-6" /></div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Plantões Realizados</p>
+              <h3 className="text-2xl font-bold text-slate-900">{totalConfirmadosGeral}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-orange-100 text-orange-700 rounded-lg"><AlertTriangle className="w-6 h-6" /></div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total de Recusas</p>
+              <h3 className="text-2xl font-bold text-slate-900">{totalRecusasGeral}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-red-100">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-red-100 text-red-700 rounded-lg"><XCircle className="w-6 h-6" /></div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Faltas Registradas</p>
+              <h3 className="text-2xl font-bold text-red-600">{totalFaltasGeral}</h3>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ========================================== */}
+      {/* TABELA INDIVIDUAL                          */}
+      {/* ========================================== */}
       <Card className="border-slate-200 shadow-sm">
         <CardHeader className="bg-slate-50 border-b border-slate-200">
           <CardTitle className="text-lg flex items-center gap-2 text-slate-800">
@@ -49,6 +105,7 @@ export default async function RelatoriosPage() {
                   <th className="px-4 py-3">GCM / Matrícula</th>
                   <th className="px-4 py-3">Equipe</th>
                   <th className="px-4 py-3 text-center">Presenças</th>
+                  <th className="px-4 py-3 text-center">Horas Est.</th>
                   <th className="px-4 py-3 text-center">Recusas</th>
                   <th className="px-4 py-3 text-center">Faltas</th>
                   <th className="px-4 py-3 text-center">Total Convocado</th>
@@ -57,7 +114,7 @@ export default async function RelatoriosPage() {
               <tbody className="divide-y divide-slate-100">
                 {relatorio.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                       Nenhum dado operacional registrado.
                     </td>
                   </tr>
@@ -78,6 +135,10 @@ export default async function RelatoriosPage() {
                           {gcm.confirmados > 0 && <CheckCircle2 className="w-4 h-4" />}
                           {gcm.confirmados}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-slate-700 flex items-center justify-center gap-1">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        {gcm.horasTrabalhadas}h
                       </td>
                       <td className="px-4 py-3 text-center text-slate-600">
                         {gcm.recusados}

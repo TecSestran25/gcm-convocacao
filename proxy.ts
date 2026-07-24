@@ -1,6 +1,6 @@
 // src/middleware.ts
 import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
+import { authConfig } from "./src/auth.config"
 import { NextResponse } from "next/server"
 
 // O Middleware agora usa o authConfig leve que não contém o Prisma/Bcrypt
@@ -22,5 +22,7 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BotaoImprimir } from "@/components/BotaoImprimir"
 import { BotaoPresenca } from "@/components/BotaoPresenca"
+import { BotaoAutomacao } from "@/components/BotaoAutomacao"
 
 export default async function DetalhesEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
@@ -26,6 +27,7 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
 
   const confirmados = evento.convocacoes.filter(c => c.status === "CONFIRMADO").length
   const limiteAtingido = confirmados >= evento.vagas
+  const vagasRestantes = Math.max(0, evento.vagas - confirmados)
 
   // Filtra apenas os guardas confirmados para a folha de impressão
   const listaOficial = evento.convocacoes.filter(c => c.status === "CONFIRMADO")
@@ -57,7 +59,13 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
             </div>
           </div>
         </div>
-
+        <div className="print:hidden">
+          <BotaoAutomacao 
+            eventoId={resolvedParams.id} 
+            equipeAlvo={evento.equipePrioritaria}
+            vagasDisponiveis={vagasRestantes}
+          />
+        </div>
         <div className="bg-white rounded-md border border-slate-200 overflow-hidden">
           <Table>
             <TableHeader className="bg-slate-50">
