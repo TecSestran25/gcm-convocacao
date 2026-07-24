@@ -3,14 +3,14 @@
 
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
-import { StatusConvocacao } from "@prisma/client" // <-- Adicionamos a importação do Enum do Prisma
+import { StatusConvocacao } from "@prisma/client"
 
 export async function convocarFilaAutomatica(eventoId: string, equipe: string, quantidadeVagas: number) {
   try {
-    // 1. Busca os GCMs da equipe solicitada
+    // 1. Busca os GCMs da equipe solicitada (Ignora apenas ADMINS)
     const gcmsElegiveis = await prisma.usuario.findMany({
       where: { 
-        role: "GCM", 
+        role: { not: "ADMIN" }, 
         equipe: equipe 
       },
       include: {
@@ -45,11 +45,11 @@ export async function convocarFilaAutomatica(eventoId: string, equipe: string, q
       return { erro: "Todos os Guardas desta equipe já foram convocados ou não há efetivo suficiente." }
     }
 
-    // 4. Cria as convocações no status PENDENTE usando o tipo correto do Prisma
+    // 4. Cria as convocações no status PENDENTE
     const novasConvocacoes = selecionados.map(gcm => ({
       eventoId,
       gcmId: gcm.id,
-      status: StatusConvocacao.PENDENTE // <-- Usamos o Enum tipado em vez de uma string solta
+      status: StatusConvocacao.PENDENTE
     }))
 
     await prisma.convocacao.createMany({

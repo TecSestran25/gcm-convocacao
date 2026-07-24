@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { convocarFilaAutomatica } from "@/app/admin/eventos/automacao-actions"
 
 export async function responderConvocacao(eventoId: string, status: "ACEITO" | "RECUSADO") {
   const session = await auth()
@@ -21,7 +22,7 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
     }
   })
 
-  // 2. Trava contra cliques repetidos: se o status atual já for igual ao que ele clicou, não faz nada
+  // 2. Trava contra cliques repetidos
   if (respostaExistente && respostaExistente.status === status) {
     return
   }
@@ -30,7 +31,7 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
   const dataBrasilia = new Date()
   dataBrasilia.setHours(dataBrasilia.getHours() - 3)
 
-  // 4. Grava ou atualiza a resposta no banco de dados com a data corrigida
+  // 4. Grava ou atualiza a resposta no banco de dados
   await prisma.convocacao.upsert({
     where: {
       eventoId_gcmId: { eventoId, gcmId }
@@ -47,20 +48,39 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
     }
   })
 
-  // 5. Busca os dados do GCM e do Evento para criar uma notificação rica
+  // 5. Busca os dados do GCM e do Evento
   const usuario = await prisma.usuario.findUnique({ where: { id: gcmId } })
   const evento = await prisma.evento.findUnique({ where: { id: eventoId } })
 
-  // 6. Dispara a notificação para o Comando (Sininho)
+  // 6. Dispara a notificação padrão para o Comando
   await prisma.notificacao.create({
     data: {
       titulo: status === "ACEITO" ? "Nova Adesão Operacional" : "Recusa de Escala",
       mensagem: `O GCM ${usuario?.nome || 'Desconhecido'} ${status === "ACEITO" ? "ACEITOU" : "RECUSOU"} a convocação para a missão ${evento?.codigo || 'Desconhecida'}.`,
-      tipo: status === "ACEITO" ? "SUCESSO" : "AVISO" // <-- Mudamos para AVISO aqui
+      tipo: status === "ACEITO" ? "SUCESSO" : "AVISO"
     }
   })
 
-  // 7. Força a atualizar os dados na tela do GCM e na tela de detalhes do Comando
+  // ==============================================================
+  // 7. GATILHO DA SUBSTITUIÇÃO AUTOMÁTICA (ITEM 7 DO ESCOPO)
+  // ==============================================================
+  if (status === "RECUSADO" && usuario?.equipe) {
+    // Tenta convocar 1 pessoa da mesma equipe do guarda que recusou
+    const substituicao = await convocarFilaAutomatica(eventoId, usuario.equipe, 1)
+
+    // Se encontrou alguém e convocou com sucesso, avisa o comando
+    if (substituicao.sucesso) {
+      await prisma.notificacao.create({
+        data: {
+          titulo: "Substituição Automática",
+          mensagem: `Devido à recusa, o sistema convocou automaticamente o próximo da fila (Equipe ${usuario.equipe}) para a missão ${evento?.codigo || ''}.`,
+          tipo: "INFO" 
+        }
+      })
+    }
+  }
+
+  // 8. Atualiza as telas em tempo real
   revalidatePath("/gcm/convocacoes")
   revalidatePath(`/admin/eventos/${eventoId}`)
 }
