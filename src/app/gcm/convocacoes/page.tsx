@@ -3,17 +3,18 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { responderConvocacao } from "./actions"
 import { Button } from "@/components/ui/button"
+import { BotaoAtivarNotificacoes } from "@/components/BotaoAtivarNotificacoes" // <-- Nossa importação
 
 export default async function ConvocacoesGcmPage() {
   const session = await auth()
   const gcmId = session?.user?.id
 
-  if (!gcmId) return null // Proteção de segurança
+  if (!gcmId) return null 
 
   // 1. Busca os dados do guarda no banco para descobrir a sua equipa
   const guarda = await prisma.usuario.findUnique({
     where: { id: gcmId },
-    select: { equipe: true } // Trazemos apenas a equipa para ser mais rápido
+    select: { equipe: true } 
   })
 
   const minhaEquipe = guarda?.equipe || ""
@@ -40,6 +41,10 @@ export default async function ConvocacoesGcmPage() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto p-4">
+      
+      {/* Botão de Ativar Notificações no Topo */}
+      <BotaoAtivarNotificacoes />
+
       <div>
         <h1 className="text-xl font-bold text-slate-900">Serviços Extra Disponíveis</h1>
         <p className="text-sm text-slate-500">Responda com a sua disponibilidade para as escalas.</p>

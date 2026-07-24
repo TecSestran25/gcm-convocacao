@@ -24,6 +24,7 @@ model Usuario {
   idEventoAtual   String?
   telefone        String?
   convocacoes     Convocacao[]
+  inscricoesPush  PushSubscription[]
 }
 
 model Evento {
@@ -82,4 +83,14 @@ enum StatusConvocacao {
   RECUSADO
   CONFIRMADO
   AUSENTE
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  criadoEm  DateTime @default(now())
 }
