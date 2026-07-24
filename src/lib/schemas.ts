@@ -10,7 +10,12 @@ export const gcmSchema = z.object({
     .min(3, "A matrícula deve ter pelo menos 3 algarismos")
     .regex(/^[0-9]+$/, "A matrícula deve conter apenas números"),
   equipe: z.string()
-    .min(1, "A equipa é obrigatória"),
+    .min(1, "A equipe é obrigatória"),
+  telefone: z.string().optional(),
+  cnh: z.string().optional(),
+  role: z.string().optional(),
+  observacoes: z.string().optional(),
+  especializacoes: z.string().optional(),
   novaSenha: z.string().optional()
 })
 

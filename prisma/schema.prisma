@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,12 +6,69 @@ datasource db {
   provider = "postgresql"
 }
 
-// ------------------------------------------------------
-// ENUMS (Listas de opções fixas para evitar erros de digitação)
-// ------------------------------------------------------
+model Usuario {
+  id              String       @id @default(uuid())
+  matricula       String       @unique
+  senha           String
+  nome            String
+  cnh             String?
+  equipe          String?
+  role            Role         @default(GCM)
+  status          StatusGcm    @default(ATIVO)
+  totalGecpMes    Int          @default(0)
+  ultimoExtra     DateTime?
+  observacoes     String?
+  criadoEm        DateTime     @default(now())
+  atualizadoEm    DateTime     @updatedAt
+  especializacoes String?
+  idEventoAtual   String?
+  telefone        String?
+  convocacoes     Convocacao[]
+}
+
+model Evento {
+  id                String       @id @default(uuid())
+  codigo            String       @unique
+  dataServico       DateTime
+  horario           String
+  local             String
+  tipoConvocacao    String       @default("NECESSIDADE OPERACIONAL DO SERVIÇO")
+  vagas             Int
+  equipePrioritaria String
+  observacoes       String?
+  criadoEm          DateTime     @default(now())
+  convocacoes       Convocacao[]
+}
+
+model Convocacao {
+  id           String           @id @default(uuid())
+  status       StatusConvocacao @default(PENDENTE)
+  dataResposta DateTime?
+  eventoId     String
+  gcmId        String
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  evento       Evento           @relation(fields: [eventoId], references: [id])
+  gcm          Usuario          @relation(fields: [gcmId], references: [id])
+
+  @@unique([eventoId, gcmId])
+}
+
+model Notificacao {
+  id        String   @id @default(cuid())
+  titulo    String
+  mensagem  String
+  tipo      String   @default("INFO")
+  lida      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
 enum Role {
   ADMIN
   GCM
+  COMANDO
+  LIDER
+  SUPERVISOR
 }
 
 enum StatusGcm {
@@ -25,80 +80,6 @@ enum StatusConvocacao {
   PENDENTE
   ACEITO
   RECUSADO
-  CONFIRMADO  // Usado pela chefia após o evento (presença)
-  AUSENTE     // Usado pela chefia após o evento (falta)
-}
-
-// ------------------------------------------------------
-// TABELAS (Models)
-// ------------------------------------------------------
-
-// Tabela 1: O Efetivo (Serve tanto para Administradores quanto Guardas)
-model Usuario {
-  id             String    @id @default(uuid())
-  matricula      String    @unique
-  senha          String    // Senha criptografada (Hash)
-  nome           String
-  cnh            String?   // Opcional (?)
-  equipe         String?   // Ex: ALFA, BRAVO, CHARLIE
-  role           Role      @default(GCM)
-  status         StatusGcm @default(ATIVO)
-  
-  // Controle para a "Roleta Automática"
-  totalGecpMes   Int       @default(0) 
-  ultimoExtra    DateTime? 
-  observacoes    String?
-  
-  // Relacionamento: Um GCM pode ter várias convocações
-  convocacoes    Convocacao[]
-
-  criadoEm       DateTime  @default(now())
-  atualizadoEm   DateTime  @updatedAt
-}
-
-// Tabela 2: Os Eventos criados pela Chefia
-model Evento {
-  id                String   @id @default(uuid())
-  codigo            String   @unique // Ex: GECP_00000001
-  dataServico       DateTime
-  horario           String
-  local             String
-  tipoConvocacao    String   @default("NECESSIDADE OPERACIONAL DO SERVIÇO")
-  vagas             Int
-  equipePrioritaria String
-  observacoes       String?  @db.Text
-  
-  // Relacionamento: Um evento tem várias convocações (vários guardas)
-  convocacoes       Convocacao[]
-
-  criadoEm          DateTime @default(now())
-}
-
-// Tabela 3: A Fila/Respostas (O vínculo entre o GCM e o Evento)
-model Convocacao {
-  id             String           @id @default(uuid())
-  status         StatusConvocacao @default(PENDENTE)
-  dataResposta   DateTime?        // Quando o GCM apertou o botão
-  
-  // Chaves Estrangeiras (Relacionamentos)
-  eventoId       String
-  evento         Evento           @relation(fields: [eventoId], references: [id])
-  
-  gcmId          String
-  gcm            Usuario          @relation(fields: [gcmId], references: [id])
-
-  criadoEm       DateTime         @default(now())
-  atualizadoEm   DateTime         @updatedAt
-
-  // Garante que o mesmo GCM não seja convocado 2x pro mesmo evento
-  @@unique([eventoId, gcmId]) 
-}
-
-model Notificacao {
-  id        String   @id @default(cuid())
-  titulo    String
-  mensagem  String
-  tipo      String   @default("INFO") // Pode ser SUCESSO, ERRO, AVISO
-  lida      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  CONFIRMADO
+  AUSENTE
 }

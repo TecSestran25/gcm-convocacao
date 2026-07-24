@@ -16,8 +16,9 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
   const termoPesquisa = resolvedParams.q || ""
   const paginaAtual = Number(resolvedParams.page) || 1
 
+  // Oculta os administradores da listagem para não serem excluídos por engano
   const filtroBusca = {
-    role: "GCM" as const,
+    role: { not: "ADMIN" as const },
     OR: [
       { nome: { contains: termoPesquisa, mode: "insensitive" as const } },
       { matricula: { contains: termoPesquisa } }
@@ -41,24 +42,56 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
         <p className="text-slate-500 text-sm md:text-base">Cadastre e gerencie os Guardas Municipais.</p>
       </div>
 
-      {/* Formulário adaptado para mobile e PC */}
-      <div className="bg-white p-4 rounded-md border border-slate-200">
-        <form action={criarGCM} className="flex flex-col md:flex-row gap-4 md:items-end">
-          <div className="space-y-1 flex-1">
-            <label className="text-sm font-medium">Nome Completo</label>
-            <Input name="nome" required placeholder="Ex: JOÃO DA SILVA" />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="space-y-1 w-full sm:w-32">
+      {/* Formulário com Grid Responsivo */}
+      <div className="bg-white p-5 rounded-md border border-slate-200 shadow-sm">
+        <form action={criarGCM} className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-sm font-medium">Nome Completo</label>
+              <Input name="nome" required placeholder="Ex: JOÃO DA SILVA" />
+            </div>
+            <div className="space-y-1">
               <label className="text-sm font-medium">Matrícula</label>
               <Input name="matricula" required placeholder="Ex: 12345" />
             </div>
-            <div className="space-y-1 w-full sm:w-32">
+            <div className="space-y-1">
               <label className="text-sm font-medium">Equipe</label>
-              <Input name="equipe" required placeholder="Ex: ALFA" />
+              <Input name="equipe" required placeholder="Ex: ALPHA" />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Cargo (Role)</label>
+              <select name="role" className="flex h-9 w-full rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950">
+                <option value="GCM">GCM</option>
+                <option value="LIDER">LÍDER</option>
+                <option value="SUPERVISOR">SUPERVISOR</option>
+                <option value="COMANDO">COMANDO</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Possui CNH?</label>
+              <select name="cnh" className="flex h-9 w-full rounded-md border border-slate-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950">
+                <option value="SIM">SIM</option>
+                <option value="NÃO">NÃO</option>
+              </select>
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-sm font-medium">Telefone</label>
+              <Input name="telefone" placeholder="(81) 99999-9999" />
+            </div>
+
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-sm font-medium">Especializações</label>
+              <Input name="especializacoes" placeholder="Ex: ROMU, Canil, Maria da Penha..." />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-sm font-medium">Observações</label>
+              <Input name="observacoes" placeholder="Ex: Restrição médica temporária" />
             </div>
           </div>
-          <Button type="submit" className="w-full md:w-auto mt-2 md:mt-0">Cadastrar</Button>
+          <div className="flex justify-end pt-2">
+            <Button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">Cadastrar Guarda</Button>
+          </div>
         </form>
       </div>
 
@@ -76,16 +109,15 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
           </div>
         ) : (
           <>
-            {/* ========================================== */}
-            {/*           VISÃO DESKTOP: TABELA            */}
-            {/* ========================================== */}
+            {/* VISÃO DESKTOP */}
             <div className="hidden md:block bg-white rounded-md border border-slate-200 overflow-hidden">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead>Matrícula</TableHead>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Equipe</TableHead>
+                    <TableHead>Equipe / Cargo</TableHead>
+                    <TableHead>Contato</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -94,8 +126,19 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
                   {gcms.map((gcm) => (
                     <TableRow key={gcm.id}>
                       <TableCell className="font-medium">{gcm.matricula}</TableCell>
-                      <TableCell>{gcm.nome}</TableCell>
-                      <TableCell>{gcm.equipe || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span>{gcm.nome}</span>
+                          {gcm.cnh === "SIM" && <span className="text-[10px] bg-slate-100 text-slate-600 w-fit px-1.5 py-0.5 rounded mt-1 font-semibold">CNH Ativa</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{gcm.equipe || "-"}</span>
+                          <span className="text-xs text-slate-500">{gcm.role}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600">{gcm.telefone || "-"}</TableCell>
                       <TableCell>
                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${
                           gcm.status === "ATIVO" ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-600"
@@ -109,15 +152,11 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
                         </Link>
                         <BotaoAcao 
                           action={alterarStatusGCM.bind(null, gcm.id, gcm.status as "ATIVO" | "INATIVO")} 
-                          label="Status" 
-                          variant="secondary"
-                          mensagemSucesso="Status atualizado!" 
+                          label="Status" variant="secondary" mensagemSucesso="Status atualizado!" 
                         />
                         <BotaoAcao 
                           action={eliminarGCM.bind(null, gcm.id)} 
-                          label="Eliminar" 
-                          variant="destructive"
-                          mensagemSucesso="Guarda removido." 
+                          label="Excluir" variant="destructive" mensagemSucesso="Guarda removido." 
                         />
                       </TableCell>
                     </TableRow>
@@ -126,13 +165,11 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
               </Table>
             </div>
 
-            {/* ========================================== */}
-            {/*            VISÃO MOBILE: CARDS             */}
-            {/* ========================================== */}
+            {/* VISÃO MOBILE */}
             <div className="grid md:hidden grid-cols-1 gap-4">
               {gcms.map((gcm) => (
-                <div key={`mobile-${gcm.id}`} className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
-                  <div className="flex justify-between items-start gap-2 mb-4">
+                <div key={`mobile-${gcm.id}`} className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm flex flex-col gap-3">
+                  <div className="flex justify-between items-start gap-2">
                     <div className="overflow-hidden">
                       <h3 className="font-bold text-slate-900 truncate">{gcm.nome}</h3>
                       <p className="text-sm text-slate-500 font-mono mt-0.5">{gcm.matricula}</p>
@@ -143,23 +180,29 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
                       {gcm.status}
                     </span>
                   </div>
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 text-sm bg-slate-50 w-fit px-3 py-1.5 rounded text-slate-700 border border-slate-100">
-                      <span className="font-medium text-slate-500">Equipe:</span>
-                      <span className="font-bold">{gcm.equipe || "-"}</span>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex flex-col bg-slate-50 p-2 rounded border border-slate-100">
+                      <span className="text-xs text-slate-500 font-medium">Equipe</span>
+                      <span className="font-bold text-slate-700">{gcm.equipe || "-"}</span>
+                    </div>
+                    <div className="flex flex-col bg-slate-50 p-2 rounded border border-slate-100">
+                      <span className="text-xs text-slate-500 font-medium">Cargo</span>
+                      <span className="font-bold text-slate-700">{gcm.role}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t border-slate-100">
+
+                  <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-100">
                     <Link href={`/admin/efetivo/${gcm.id}`} className="col-span-2">
                       <Button variant="outline" size="sm" className="w-full">Editar Dados</Button>
                     </Link>
                     <BotaoAcao 
                       action={alterarStatusGCM.bind(null, gcm.id, gcm.status as "ATIVO" | "INATIVO")} 
-                      label="Status" variant="secondary" mensagemSucesso="Status atualizado!" 
+                      label="Alterar Status" variant="secondary" mensagemSucesso="Status atualizado!" 
                     />
                     <BotaoAcao 
                       action={eliminarGCM.bind(null, gcm.id)} 
-                      label="Eliminar" variant="destructive" mensagemSucesso="Guarda removido." 
+                      label="Excluir" variant="destructive" mensagemSucesso="Guarda removido." 
                     />
                   </div>
                 </div>
@@ -168,7 +211,6 @@ export default async function EfetivoPage({ searchParams }: { searchParams: Prom
           </>
         )}
 
-        {/* Paginação Comum às Duas Visões */}
         {totalPaginas > 1 && (
           <div className="pt-2">
             <Paginacao totalPaginas={totalPaginas} />

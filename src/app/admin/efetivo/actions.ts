@@ -9,19 +9,15 @@ import { redirect } from "next/navigation"
 import { gcmSchema } from "@/lib/schemas"
 
 export async function criarGCM(formData: FormData) {
-  // 1. Extrai os dados do formulário numa estrutura de objeto
   const dadosBrutos = Object.fromEntries(formData.entries())
-  
-  // 2. Valida com o Zod
   const validacao = gcmSchema.safeParse(dadosBrutos)
   
   if (!validacao.success) {
-    // Pega a primeira mensagem de erro gerada pelo Zod
     const mensagemErro = validacao.error.issues[0]?.message ?? "Dados inválidos"
     throw new Error(mensagemErro)
   }
 
-  const { nome, matricula, equipe } = validacao.data
+  const { nome, matricula, equipe, telefone, cnh, role, observacoes, especializacoes } = validacao.data
 
   const existe = await prisma.usuario.findUnique({
     where: { matricula }
@@ -39,36 +35,40 @@ export async function criarGCM(formData: FormData) {
       matricula,
       equipe: equipe.toUpperCase(),
       senha: senhaHash,
-      role: "GCM",
+      telefone: telefone || null,
+      cnh: cnh || "NÃO",
+      role: (role as any) || "GCM",
+      observacoes: observacoes || null,
+      especializacoes: especializacoes || null,
     }
   })
 
   revalidatePath("/admin/efetivo")
 }
+
 export async function eliminarGCM(id: string) {
-  // 1. Limpa as convocações vinculadas a este guarda para não quebrar o banco
   await prisma.convocacao.deleteMany({
     where: { gcmId: id }
   })
 
-  // 2. Elimina o utilizador do banco de dados
   await prisma.usuario.delete({
     where: { id }
   })
 
-  // 3. Atualiza o ecrã instantaneamente
   revalidatePath("/admin/efetivo")
 }
+
 export async function alterarStatusGCM(id: string, statusAtual: "ATIVO" | "INATIVO") {
   const novoStatus = statusAtual === "ATIVO" ? "INATIVO" : "ATIVO"
   
   await prisma.usuario.update({
     where: { id },
-    data: { status: novoStatus }
+    data: { status: novoStatus as any }
   })
 
   revalidatePath("/admin/efetivo")
 }
+
 export async function atualizarGCM(id: string, formData: FormData) {
   const dadosBrutos = Object.fromEntries(formData.entries())
   const validacao = gcmSchema.safeParse(dadosBrutos)
@@ -78,12 +78,17 @@ export async function atualizarGCM(id: string, formData: FormData) {
     throw new Error(mensagemErro)
   }
 
-  const { nome, matricula, equipe, novaSenha } = validacao.data
+  const { nome, matricula, equipe, novaSenha, telefone, cnh, role, observacoes, especializacoes } = validacao.data
 
   const dadosAtualizados: any = {
     nome: nome.toUpperCase(),
     matricula,
     equipe: equipe.toUpperCase(),
+    telefone: telefone || null,
+    cnh: cnh || "NÃO",
+    role: (role as any) || "GCM",
+    observacoes: observacoes || null,
+    especializacoes: especializacoes || null,
   }
 
   if (novaSenha && novaSenha.trim() !== "") {
