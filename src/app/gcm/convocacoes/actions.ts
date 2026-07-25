@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { convocarFilaAutomatica } from "@/app/admin/eventos/automacao-actions"
+import webpush from "@/lib/webpush" // <-- Importamos o disparador de Push
 
 export async function responderConvocacao(eventoId: string, status: "ACEITO" | "RECUSADO") {
   const session = await auth()
@@ -52,14 +53,53 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
   const usuario = await prisma.usuario.findUnique({ where: { id: gcmId } })
   const evento = await prisma.evento.findUnique({ where: { id: eventoId } })
 
-  // 6. Dispara a notificação padrão para o Comando
+  // 6. Dispara a notificação padrão para o Comando (No painel web)
+  const tituloNotificacao = status === "ACEITO" ? "Nova Adesão Operacional" : "Recusa de Escala"
+  const mensagemGeral = `O GCM ${usuario?.nome || 'Desconhecido'} ${status === "ACEITO" ? "ACEITOU" : "RECUSOU"} a convocação para a missão ${evento?.codigo || 'Desconhecida'}.`
+  
   await prisma.notificacao.create({
     data: {
-      titulo: status === "ACEITO" ? "Nova Adesão Operacional" : "Recusa de Escala",
-      mensagem: `O GCM ${usuario?.nome || 'Desconhecido'} ${status === "ACEITO" ? "ACEITOU" : "RECUSOU"} a convocação para a missão ${evento?.codigo || 'Desconhecida'}.`,
+      titulo: tituloNotificacao,
+      mensagem: mensagemGeral,
       tipo: status === "ACEITO" ? "SUCESSO" : "AVISO"
     }
   })
+
+  // ==============================================================
+  // NOVO: DISPARO DE PUSH NOTIFICATION PARA OS ADMINS (COMANDO)
+  // ==============================================================
+  try {
+    // Pega todos os usuários que são ADMIN e traz os celulares deles
+    const admins = await prisma.usuario.findMany({
+      where: { role: "ADMIN" },
+      include: { inscricoesPush: true }
+    })
+
+    const payloadAdmin = JSON.stringify({
+      title: tituloNotificacao,
+      body: mensagemGeral,
+      url: `/admin/eventos/${eventoId}` // O Admin clica na notificação e vai direto para a tela do evento
+    })
+
+    // Dispara o push para cada celular de cada Admin
+    for (const admin of admins) {
+      for (const inscricao of admin.inscricoesPush) {
+        try {
+          await webpush.sendNotification({
+            endpoint: inscricao.endpoint,
+            keys: {
+              auth: inscricao.auth,
+              p256dh: inscricao.p256dh
+            }
+          }, payloadAdmin)
+        } catch (pushError) {
+          console.error(`Falha ao enviar push para Admin ${admin.nome}:`, pushError)
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao buscar admins para push:", err)
+  }
 
   // ==============================================================
   // 7. GATILHO DA SUBSTITUIÇÃO AUTOMÁTICA (ITEM 7 DO ESCOPO)
@@ -68,7 +108,7 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
     // Tenta convocar 1 pessoa da mesma equipe do guarda que recusou
     const substituicao = await convocarFilaAutomatica(eventoId, usuario.equipe, 1)
 
-    // Se encontrou alguém e convocou com sucesso, avisa o comando
+    // Se encontrou alguém e convocou com sucesso, avisa o comando no painel
     if (substituicao.sucesso) {
       await prisma.notificacao.create({
         data: {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { AutoRefresh } from "@/components/AutoRefresh" // <-- Nosso motor de tempo real
+import { BotaoAtivarNotificacoes } from "@/components/BotaoAtivarNotificacoes"
 
 export default async function DashboardPage() {
   // 1. Busca os números gerais para os "Cards" de estatística
@@ -34,10 +35,12 @@ export default async function DashboardPage() {
     <div className="space-y-8 max-w-6xl mx-auto">
       {/* O Motor invisível rodando no Dashboard a cada 10 segundos */}
       <AutoRefresh interval={10000} />
-
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Painel de Comando</h1>
         <p className="text-slate-500 mt-1">Visão geral do efetivo e convocações operacionais da GECP.</p>
+      </div>
+      <div>
+        <BotaoAtivarNotificacoes />
       </div>
 
       {/* ========================================== */}

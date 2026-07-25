@@ -6,37 +6,35 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { eventoSchema } from "@/lib/schemas"
 
+// Importamos o motor de automação que dispara os Pushs e cria a fila
+import { convocarFilaAutomatica } from "./automacao-actions" 
+
 export async function criarEvento(formData: FormData) {
-  // 1. Não pegamos mais o código do formulário
   const dataServico = new Date(formData.get("dataServico") as string)
   const horario = formData.get("horario") as string
   const local = formData.get("local") as string
   const vagas = parseInt(formData.get("vagas") as string)
   const equipePrioritaria = formData.get("equipePrioritaria") as string
 
-  // 2. Busca o último evento criado no banco para saber o número
+  // Busca o último evento criado no banco para saber o número
   const ultimoEvento = await prisma.evento.findFirst({
-    orderBy: {
-      criadoEm: 'desc'
-    }
+    orderBy: { criadoEm: 'desc' }
   })
 
-  // 3. Lógica para gerar o próximo número (GECP_00000001)
+  // Lógica para gerar o próximo número (GECP_00000001)
   let proximoNumero = 1
   
   if (ultimoEvento && ultimoEvento.codigo.startsWith('GECP_')) {
-    // Extrai apenas os números do código antigo (ex: "00000005" -> 5) e soma 1
     const numeroAtual = parseInt(ultimoEvento.codigo.replace('GECP_', ''), 10)
     if (!isNaN(numeroAtual)) {
       proximoNumero = numeroAtual + 1
     }
   }
 
-  // Formata o número com 8 dígitos (adiciona os zeros à esquerda)
   const novoCodigo = `GECP_${proximoNumero.toString().padStart(8, '0')}`
 
-  // 4. Salva no banco com o código automático
-  await prisma.evento.create({
+  // 1. Salva no banco e CAPTURA O NOVO EVENTO em uma variável
+  const novoEvento = await prisma.evento.create({
     data: {
       codigo: novoCodigo,
       dataServico,
@@ -47,11 +45,21 @@ export async function criarEvento(formData: FormData) {
     }
   })
 
-  // 5. Opcional: Disparar uma notificação informando a criação do evento
+  // =========================================================
+  // 2. GATILHO DA CONVOCAÇÃO AUTOMÁTICA
+  // =========================================================
+  // Só dispara se o alvo for uma equipe específica. 
+  // (Evita erro se o Comando selecionar "GERAL" ou "TODAS")
+  if (equipePrioritaria !== "TODAS" && equipePrioritaria !== "GERAL") {
+    // Chama exatamente a quantidade de vagas solicitadas e já dispara os Pushs!
+    await convocarFilaAutomatica(novoEvento.id, equipePrioritaria, vagas)
+  }
+
+  // 3. Disparar uma notificação informando a criação do evento no painel
   await prisma.notificacao.create({
     data: {
       titulo: "Nova Convocação Criada",
-      mensagem: `A missão ${novoCodigo} foi gerada para a equipe ${equipePrioritaria}.`,
+      mensagem: `A missão ${novoCodigo} foi gerada para a equipe ${equipePrioritaria} e a fila foi acionada.`,
       tipo: "INFO"
     }
   })
@@ -61,19 +69,19 @@ export async function criarEvento(formData: FormData) {
 }
 
 export async function eliminarEvento(id: string) {
-  // 1. Elimina primeiro todas as respostas dos guardas associadas a este evento
+  // Elimina primeiro todas as respostas dos guardas associadas a este evento
   await prisma.convocacao.deleteMany({
     where: { eventoId: id }
   })
 
-  // 2. Elimina o evento principal
+  // Elimina o evento principal
   await prisma.evento.delete({
     where: { id }
   })
 
-  // 3. Atualiza a lista
   revalidatePath("/admin/eventos")
 }
+
 export async function homologarGuarda(eventoId: string, gcmId: string) {
   // Passa o guarda para a escala oficial
   await prisma.convocacao.update({
@@ -85,6 +93,7 @@ export async function homologarGuarda(eventoId: string, gcmId: string) {
 
   revalidatePath(`/admin/eventos/${eventoId}`)
 }
+
 export async function removerHomologacao(eventoId: string, gcmId: string) {
   // Retira o guarda da escala oficial e devolve para a fila de espera
   await prisma.convocacao.update({
@@ -96,6 +105,7 @@ export async function removerHomologacao(eventoId: string, gcmId: string) {
 
   revalidatePath(`/admin/eventos/${eventoId}`)
 }
+
 export async function atualizarEvento(id: string, formData: FormData) {
   const dadosBrutos = Object.fromEntries(formData.entries())
   const validacao = eventoSchema.safeParse(dadosBrutos)
