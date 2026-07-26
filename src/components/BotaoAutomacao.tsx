@@ -37,17 +37,17 @@ export function BotaoAutomacao({ eventoId, equipeAlvo, vagasDisponiveis }: Props
   }
 
   return (
-    <div className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${isEsgotado ? "bg-slate-100 border-slate-200 opacity-80" : "bg-slate-50 border-slate-200"}`}>
-      <div className="flex flex-col">
-        <label className="text-xs font-semibold text-slate-500 mb-1">
-          {isEsgotado ? "Vagas Preenchidas" : `Vagas para a Equipe ${equipeAlvo}`}
+    <div className={`flex flex-col sm:flex-row items-start sm:items-end gap-3 p-4 rounded-xl border transition-all ${isEsgotado ? "bg-slate-100 border-slate-200 opacity-80" : "bg-white border-slate-200"}`}>
+      <div className="flex flex-col w-full sm:w-auto shrink-0">
+        <label className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide whitespace-nowrap">
+          {isEsgotado ? "Vagas Preenchidas" : `Vagas / Equipe ${equipeAlvo}`}
         </label>
-        <Input 
+        <Input
           type="number" 
           min="1" 
           value={vagas} 
           onChange={(e) => setVagas(Number(e.target.value))}
-          className="w-20 h-9 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full sm:w-28 h-11 text-lg font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isEsgotado || carregando} // Trava o campo de texto
         />
       </div>
@@ -56,20 +56,21 @@ export function BotaoAutomacao({ eventoId, equipeAlvo, vagasDisponiveis }: Props
         onClick={handleConvocar} 
         disabled={isEsgotado || carregando} // Trava o botão
         variant={isEsgotado ? "secondary" : "default"}
-        className={`mt-5 h-9 ${!isEsgotado && "bg-blue-600 hover:bg-blue-700"}`}
+        className={`w-full sm:w-auto sm:ml-auto h-11 font-bold ${!isEsgotado && "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20"}`}
       >
         {isEsgotado ? (
           <>
-            <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
+            <CheckCircle2 className="w-5 h-5 mr-2 text-green-600" />
             Escala Fechada
           </>
         ) : (
           <>
-            <Zap className="w-4 h-4 mr-2" />
+            <Zap className="w-5 h-5 mr-2" />
             {carregando ? "Convocando..." : "Convocar Fila"}
           </>
         )}
       </Button>
+      
     </div>
   )
 }

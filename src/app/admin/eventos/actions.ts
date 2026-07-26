@@ -66,6 +66,7 @@ export async function criarEvento(formData: FormData) {
 
   revalidatePath("/admin/eventos")
   revalidatePath("/admin/dashboard")
+  redirect('/admin/eventos')
 }
 
 export async function eliminarEvento(id: string) {
