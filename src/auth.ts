@@ -7,14 +7,16 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { authConfig } from "./auth.config"
 
+type RoleType = "ADMIN" | "GCM" | "COMANDO" | "LIDER" | "SUPERVISOR"
+
 declare module "next-auth" {
   interface User {
-    role?: "ADMIN" | "GCM"
+    role?: RoleType
     matricula?: string
   }
   interface Session {
     user: {
-      role?: "ADMIN" | "GCM"
+      role?: RoleType
       matricula?: string
     } & DefaultSession["user"]
   }
@@ -23,13 +25,13 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id?: string
-    role?: "ADMIN" | "GCM"
+    role?: RoleType
     matricula?: string
   }
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  ...authConfig, // Traz as configurações leves
+  ...authConfig,
   providers: [
     Credentials({
       name: "Matrícula e Senha",

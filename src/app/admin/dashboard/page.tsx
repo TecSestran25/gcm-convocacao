@@ -99,7 +99,7 @@ export default async function DashboardPage() {
                 <ArrowRight className="w-4 h-4 text-slate-400" />
               </Button>
             </Link>
-            <Link href="/admin/usuarios" className="block">
+            <Link href="/admin/efetivo" className="block">
               <Button variant="outline" className="w-full justify-between h-12 text-slate-700 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-200 transition-all">
                 <span className="flex items-center gap-2"><Users className="w-4 h-4"/> Gerenciar Efetivo</span>
                 <ArrowRight className="w-4 h-4 text-slate-400" />
