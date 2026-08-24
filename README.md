@@ -4,7 +4,7 @@ Sistema desenvolvido para automatizar e gerenciar as convocações de efetivo da
 
 ## 🚀 Funcionalidades Principais (MVP)
 
-- **Gestão de Efetivo:** Cadastro de guardas (GCM) e administradores (Chefia), contendo dados como matrícula, CNH, equipe (Ex: ALFA, BRAVO) e status de atividade.
+- **Gestão de Efetivo:** Cadastro de guardas (GCM) e administradores (Chefia), contendo dados como matrícula, CNH, equipe (Ex: ALPHA, BRAVO) e status de atividade.
 - **Gestão de Eventos:** Criação de eventos pela chefia, definindo data, horário, local, número de vagas e equipes prioritárias.
 - **Fluxo de Convocação:** - Notificação/Fila de guardas para os eventos.
   - O GCM pode responder às convocações com aceite ou recusa.
