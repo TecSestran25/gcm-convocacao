@@ -13,9 +13,11 @@ export default async function CheckinListaPage() {
     redirect("/gcm/convocacoes")
   }
 
-  // Eventos com efetivo homologado (CONFIRMADO) ou já com check-in feito (PRESENTE/AUSENTE)
+  // Eventos com efetivo homologado (CONFIRMADO) ou já com check-in feito (PRESENTE/AUSENTE),
+  // restritos aos eventos em que este usuário foi delegado como validador
   const eventos = await prisma.evento.findMany({
     where: {
+      validadores: { some: { id: session?.user?.id } },
       convocacoes: {
         some: { status: { in: ["CONFIRMADO", "PRESENTE", "AUSENTE"] } }
       }

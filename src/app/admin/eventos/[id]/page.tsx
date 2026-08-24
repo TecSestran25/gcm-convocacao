@@ -100,7 +100,12 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
               </div>
             </div>
 
-            <div className="shrink-0 w-full md:w-auto">
+            <div className="shrink-0 w-full md:w-auto flex flex-col sm:flex-row gap-2">
+              <Link href={`/admin/eventos/${resolvedParams.id}/relatorio`}>
+                <button className="w-full h-10 px-4 rounded-md border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+                  Relatório Detalhado
+                </button>
+              </Link>
               <BotaoImprimir />
             </div>
           </div>

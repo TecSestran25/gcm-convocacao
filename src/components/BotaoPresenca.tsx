@@ -21,7 +21,7 @@ export function BotaoPresenca({ eventoId, gcmId, statusAtual }: Props) {
       } else {
         toast.warning("Falta registrada no sistema.")
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro ao registrar presença.")
     }
   }

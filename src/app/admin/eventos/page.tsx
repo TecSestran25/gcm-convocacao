@@ -7,6 +7,7 @@ import { Paginacao } from "@/components/Paginacao"
 import { BotaoAcao } from "@/components/BotaoAcao" 
 import { ModalNovoEvento } from "@/components/ModalNovoEvento"
 import { TabelaEventos } from "@/components/TabelaEventos"
+import { buscarDadosFormularioEvento } from "@/lib/dados-formulario-evento"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
@@ -42,6 +43,8 @@ export default async function EventosPage({
     skip: (paginaAtual - 1) * ITENS_POR_PAGINA
   })
 
+  const { equipes, lideres } = await buscarDadosFormularioEvento()
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       
@@ -56,7 +59,7 @@ export default async function EventosPage({
         
         <div className="w-full md:w-auto">
           <div className="hidden md:block">
-            <ModalNovoEvento />
+            <ModalNovoEvento equipes={equipes} lideres={lideres} />
           </div>
           <Link href="/admin/eventos/novo" className="md:hidden block">
             <Button className="w-full gap-2 bg-blue-600 hover:bg-blue-700 h-12 text-md">

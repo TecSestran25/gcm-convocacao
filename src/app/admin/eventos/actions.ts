@@ -18,6 +18,17 @@ export async function criarEvento(formData: FormData) {
   const slaMinutosRaw = formData.get("slaMinutos") as string | null
   const slaMinutos = slaMinutosRaw ? parseInt(slaMinutosRaw, 10) : null
 
+  // Sequência de escalonamento: próximas equipes, em ordem, além da Equipe Alvo
+  const sequenciaEscalonamento = [1, 2, 3]
+    .map((posicao) => formData.get(`escalonamento${posicao}`) as string | null)
+    .filter((equipe): equipe is string => !!equipe && equipe !== equipePrioritaria)
+
+  // Delegação de validação: obrigatório indicar ao menos um líder/supervisor
+  const validadoresIds = formData.getAll("validadores").map(String).filter(Boolean)
+  if (validadoresIds.length === 0) {
+    throw new Error("Selecione ao menos um Líder ou Supervisor autorizado a validar a presença deste evento.")
+  }
+
   // Busca o último evento criado no banco para saber o número
   const ultimoEvento = await prisma.evento.findFirst({
     orderBy: { criadoEm: 'desc' }
@@ -44,7 +55,9 @@ export async function criarEvento(formData: FormData) {
       local,
       vagas,
       equipePrioritaria,
-      slaMinutos
+      sequenciaEscalonamento,
+      slaMinutos,
+      validadores: { connect: validadoresIds.map(id => ({ id })) }
     }
   })
 
@@ -120,6 +133,18 @@ export async function atualizarEvento(id: string, formData: FormData) {
   }
 
   const { codigo, dataServico, horario, local, vagas, equipePrioritaria, slaMinutos } = validacao.data
+  const equipePrioritariaFinal = equipePrioritaria.toUpperCase()
+
+  // Campos de múltipla escolha não sobrevivem ao Object.fromEntries acima (fica só o último valor),
+  // por isso são lidos direto do FormData
+  const sequenciaEscalonamento = [1, 2, 3]
+    .map((posicao) => formData.get(`escalonamento${posicao}`) as string | null)
+    .filter((equipe): equipe is string => !!equipe && equipe !== equipePrioritariaFinal)
+
+  const validadoresIds = formData.getAll("validadores").map(String).filter(Boolean)
+  if (validadoresIds.length === 0) {
+    throw new Error("Selecione ao menos um Líder ou Supervisor autorizado a validar a presença deste evento.")
+  }
 
   await prisma.evento.update({
     where: { id },
@@ -128,9 +153,11 @@ export async function atualizarEvento(id: string, formData: FormData) {
       dataServico: new Date(dataServico),
       horario,
       local: local.toUpperCase(),
+      equipePrioritaria: equipePrioritariaFinal,
+      sequenciaEscalonamento,
       vagas,
-      equipePrioritaria: equipePrioritaria.toUpperCase(),
       slaMinutos: slaMinutos ?? null,
+      validadores: { set: validadoresIds.map(id => ({ id })) }
     }
   })
 

@@ -4,7 +4,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, CalendarPlus, FileText, Menu, X, Shield, LogOut, Users } from "lucide-react"
+import { LayoutDashboard, CalendarPlus, FileText, Menu, X, Shield, LogOut, Users, CalendarClock } from "lucide-react"
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   // Agora temos apenas UM estado para o menu (Mobile e PC), começando fechado.
@@ -17,6 +17,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const rotas = [
     { nome: "Dashboard", caminho: "/admin/dashboard", icone: LayoutDashboard },
     { nome: "Missões e Eventos", caminho: "/admin/eventos", icone: CalendarPlus },
+    { nome: "Escala Ordinária", caminho: "/admin/escalas", icone: CalendarClock },
     { nome: "Relatórios", caminho: "/admin/relatorios", icone: FileText },
     { nome: "Efetivo GCM", caminho: "/admin/efetivo", icone: Users }, 
   ]

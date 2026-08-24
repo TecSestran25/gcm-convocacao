@@ -4,7 +4,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
-import { convocarFilaAutomatica } from "@/app/admin/eventos/automacao-actions"
+import { convocarComEscalonamento } from "@/app/admin/eventos/automacao-actions"
 import webpush from "@/lib/webpush" // <-- Importamos o disparador de Push
 
 export async function responderConvocacao(eventoId: string, status: "ACEITO" | "RECUSADO") {
@@ -104,17 +104,18 @@ export async function responderConvocacao(eventoId: string, status: "ACEITO" | "
   // ==============================================================
   // 7. GATILHO DA SUBSTITUIÇÃO AUTOMÁTICA (ITEM 7 DO ESCOPO)
   // ==============================================================
-  if (status === "RECUSADO" && usuario?.equipe) {
-    // Tenta convocar 1 pessoa da mesma equipe do guarda que recusou
-    const substituicao = await convocarFilaAutomatica(eventoId, usuario.equipe, 1)
+  if (status === "RECUSADO") {
+    // Tenta convocar o próximo da fila; se a equipe original estiver esgotada ou
+    // bloqueada por plantão ordinário, escalona automaticamente (Regra 5)
+    const substituicao = await convocarComEscalonamento(eventoId, 1)
 
     // Se encontrou alguém e convocou com sucesso, avisa o comando no painel
     if (substituicao.sucesso) {
       await prisma.notificacao.create({
         data: {
           titulo: "Substituição Automática",
-          mensagem: `Devido à recusa, o sistema convocou automaticamente o próximo da fila (Equipe ${usuario.equipe}) para a missão ${evento?.codigo || ''}.`,
-          tipo: "INFO" 
+          mensagem: `Devido à recusa, o sistema convocou automaticamente o próximo da fila para a missão ${evento?.codigo || ''}.`,
+          tipo: "INFO"
         }
       })
     }

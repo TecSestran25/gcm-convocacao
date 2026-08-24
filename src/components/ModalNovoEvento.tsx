@@ -6,7 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Plus, X } from "lucide-react"
 import { FormEvento } from "./FormEvento"
 
-export function ModalNovoEvento() {
+interface Lider {
+  id: string
+  nome: string
+  matricula: string
+}
+
+interface Props {
+  equipes: string[]
+  lideres: Lider[]
+}
+
+export function ModalNovoEvento({ equipes, lideres }: Props) {
   const [aberto, setAberto] = useState(false)
 
   return (
@@ -33,7 +44,7 @@ export function ModalNovoEvento() {
             </div>
             
             <div className="p-6">
-              <FormEvento />
+              <FormEvento equipes={equipes} lideres={lideres} />
             </div>
             
           </div>

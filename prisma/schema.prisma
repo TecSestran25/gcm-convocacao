@@ -25,21 +25,25 @@ model Usuario {
   telefone        String?
   convocacoes     Convocacao[]
   inscricoesPush  PushSubscription[]
+  eventosParaValidar Evento[]      @relation("EventoValidadores")
+  checkinsValidados  Convocacao[]  @relation("ConvocacaoValidador")
 }
 
 model Evento {
-  id                String       @id @default(uuid())
-  codigo            String       @unique
-  dataServico       DateTime
-  horario           String
-  local             String
-  tipoConvocacao    String       @default("NECESSIDADE OPERACIONAL DO SERVIÇO")
-  vagas             Int
-  equipePrioritaria String
-  slaMinutos        Int?
-  observacoes       String?
-  criadoEm          DateTime     @default(now())
-  convocacoes       Convocacao[]
+  id                    String       @id @default(uuid())
+  codigo                String       @unique
+  dataServico           DateTime
+  horario               String
+  local                 String
+  tipoConvocacao        String       @default("NECESSIDADE OPERACIONAL DO SERVIÇO")
+  vagas                 Int
+  equipePrioritaria     String
+  sequenciaEscalonamento String[]    @default([])
+  slaMinutos            Int?
+  observacoes           String?
+  criadoEm              DateTime     @default(now())
+  convocacoes           Convocacao[]
+  validadores           Usuario[]    @relation("EventoValidadores")
 }
 
 model Convocacao {
@@ -47,14 +51,29 @@ model Convocacao {
   status        StatusConvocacao @default(PENDENTE)
   dataResposta  DateTime?
   dataLimiteSla DateTime?
+  validadoPorId String?
+  validadoEm    DateTime?
   eventoId      String
   gcmId         String
   criadoEm      DateTime         @default(now())
   atualizadoEm  DateTime         @updatedAt
   evento        Evento           @relation(fields: [eventoId], references: [id])
   gcm           Usuario          @relation(fields: [gcmId], references: [id])
+  validadoPor   Usuario?         @relation("ConvocacaoValidador", fields: [validadoPorId], references: [id])
 
   @@unique([eventoId, gcmId])
+}
+
+model Equipe {
+  id   String @id @default(uuid())
+  nome String @unique
+  cor  String
+}
+
+model EscalaOrdinaria {
+  id     String   @id @default(uuid())
+  data   DateTime @unique
+  equipe String
 }
 
 model Notificacao {

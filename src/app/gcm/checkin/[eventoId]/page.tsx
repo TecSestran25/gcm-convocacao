@@ -23,11 +23,15 @@ export default async function CheckinEventoPage({ params }: { params: Promise<{ 
         where: { status: { in: ["CONFIRMADO", "PRESENTE", "AUSENTE"] } },
         include: { gcm: true },
         orderBy: { gcm: { nome: 'asc' } }
-      }
+      },
+      validadores: { select: { id: true } }
     }
   })
 
   if (!evento) redirect("/gcm/checkin")
+
+  const estaDelegado = evento.validadores.some(v => v.id === session?.user?.id)
+  if (!estaDelegado) redirect("/gcm/checkin")
 
   return (
     <div className="pb-12">

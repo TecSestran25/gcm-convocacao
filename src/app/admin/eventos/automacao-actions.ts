@@ -4,7 +4,21 @@
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { StatusConvocacao } from "@prisma/client"
-import webpush from "@/lib/webpush" 
+import webpush from "@/lib/webpush"
+
+// Busca qual equipe está de plantão ordinário no dia do evento (Regra 1 - Bloqueio)
+async function buscarEquipeOrdinaria(data: Date): Promise<string | null> {
+  const inicioDia = new Date(data)
+  inicioDia.setUTCHours(0, 0, 0, 0)
+  const fimDia = new Date(inicioDia)
+  fimDia.setUTCDate(fimDia.getUTCDate() + 1)
+
+  const escala = await prisma.escalaOrdinaria.findFirst({
+    where: { data: { gte: inicioDia, lt: fimDia } }
+  })
+
+  return escala?.equipe ?? null
+}
 
 // Adicionamos o shouldRevalidate = true no final dos parâmetros
 export async function convocarFilaAutomatica(eventoId: string, equipe: string, quantidadeVagas: number, shouldRevalidate = true) {
@@ -12,6 +26,12 @@ export async function convocarFilaAutomatica(eventoId: string, equipe: string, q
     // 0. Busca o evento para saber o SLA configurado (Regra 4)
     const evento = await prisma.evento.findUnique({ where: { id: eventoId } })
     if (!evento) return { erro: "Evento não encontrado." }
+
+    // Bloqueio: a equipe de plantão ordinário no dia do evento nunca pode ser convocada
+    const equipeOrdinaria = await buscarEquipeOrdinaria(evento.dataServico)
+    if (equipeOrdinaria && equipeOrdinaria === equipe) {
+      return { erro: `A equipe ${equipe} está de plantão ordinário neste dia e não pode ser convocada.` }
+    }
 
     // 1. Busca os GCMs da equipe solicitada, já trazendo a contagem de extras
     // CONFIRMADOS no mês corrente (Regra 2 - Rodízio Justo)
@@ -124,6 +144,28 @@ export async function convocarFilaAutomatica(eventoId: string, equipe: string, q
   }
 }
 
+// Regra 5 - Plano de Contingência: tenta preencher a vaga na equipe prioritária do
+// evento e, se a fila dela estiver esgotada (ou bloqueada por plantão ordinário),
+// avança automaticamente pela sequência de escalonamento cadastrada no evento.
+export async function convocarComEscalonamento(eventoId: string, quantidadeVagas: number, shouldRevalidate = true) {
+  const evento = await prisma.evento.findUnique({ where: { id: eventoId } })
+  if (!evento) return { erro: "Evento não encontrado." }
+
+  const cadeiaEquipes = [evento.equipePrioritaria, ...evento.sequenciaEscalonamento]
+
+  let ultimoResultado: { erro?: string; sucesso?: boolean; mensagem?: string } = {
+    erro: "Nenhuma equipe da sequência de escalonamento tinha efetivo disponível."
+  }
+
+  for (const equipe of cadeiaEquipes) {
+    const resultado = await convocarFilaAutomatica(eventoId, equipe, quantidadeVagas, shouldRevalidate)
+    if (resultado.sucesso) return resultado
+    ultimoResultado = resultado
+  }
+
+  return ultimoResultado
+}
+
 // Adicionamos o parâmetro aqui também
 export async function expirarConvocacoesVencidas(shouldRevalidate = true) {
   const vencidas = await prisma.convocacao.findMany({
@@ -148,10 +190,9 @@ export async function expirarConvocacoesVencidas(shouldRevalidate = true) {
       }
     })
 
-    if (convocacao.gcm.equipe) {
-      // Repassamos o shouldRevalidate para a função filha não estourar o erro!
-      await convocarFilaAutomatica(convocacao.eventoId, convocacao.gcm.equipe, 1, shouldRevalidate)
-    }
+    // Tenta repor a vaga: primeiro na própria equipe, depois escalona automaticamente
+    // pela sequência de equipes cadastrada no evento (Regra 5)
+    await convocarComEscalonamento(convocacao.eventoId, 1, shouldRevalidate)
   }
 
   // TRAVA DO REVALIDATE

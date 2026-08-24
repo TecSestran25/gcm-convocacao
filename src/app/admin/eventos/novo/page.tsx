@@ -1,9 +1,12 @@
 // src/app/admin/eventos/novo/page.tsx
 import { FormEvento } from "@/components/FormEvento"
+import { buscarDadosFormularioEvento } from "@/lib/dados-formulario-evento"
 import { ArrowLeft, ShieldAlert } from "lucide-react"
 import Link from "next/link"
 
-export default function NovoEventoMobilePage() {
+export default async function NovoEventoMobilePage() {
+  const { equipes, lideres } = await buscarDadosFormularioEvento()
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 pb-12">
       
@@ -21,7 +24,7 @@ export default function NovoEventoMobilePage() {
       {/* Corpo do formulário */}
       <div className="px-4">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <FormEvento />
+          <FormEvento equipes={equipes} lideres={lideres} />
         </div>
       </div>
       
