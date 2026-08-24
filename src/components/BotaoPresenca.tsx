@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/components/BotaoPresenca.tsx
 "use client"
 
@@ -15,9 +13,9 @@ interface Props {
 }
 
 export function BotaoPresenca({ eventoId, gcmId, statusAtual }: Props) {
-  const handleAtualizar = async (novoStatus: "CONFIRMADO" | "FALTOU") => {
+  const handleAtualizar = async (novoStatus: "CONFIRMADO" | "AUSENTE") => {
     try {
-      await registrarPresenca(eventoId, gcmId, novoStatus as any)
+      await registrarPresenca(eventoId, gcmId, novoStatus)
       if (novoStatus === "CONFIRMADO") {
         toast.success("Presença confirmada com sucesso!")
       } else {
@@ -28,7 +26,7 @@ export function BotaoPresenca({ eventoId, gcmId, statusAtual }: Props) {
     }
   }
 
-  // Se já foi confirmado, mostra apenas uma etiqueta verde
+  // Já homologado na escala oficial (aguardando check-in do Líder/Supervisor no dia do evento)
   if (statusAtual === "CONFIRMADO") {
     return (
       <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">
@@ -37,8 +35,17 @@ export function BotaoPresenca({ eventoId, gcmId, statusAtual }: Props) {
     )
   }
 
-  // Se faltou, mostra uma etiqueta vermelha
-  if (statusAtual === "FALTOU") {
+  // Check-in do dia do evento já validou a presença
+  if (statusAtual === "PRESENTE") {
+    return (
+      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">
+        <Check className="w-3 h-3" /> PRESENÇA VALIDADA
+      </span>
+    )
+  }
+
+  // Faltou (seja marcado pelo Comando na homologação, seja pelo Líder no check-in)
+  if (statusAtual === "AUSENTE") {
     return (
       <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">
         <X className="w-3 h-3" /> FALTOU AO SERVIÇO
@@ -50,20 +57,20 @@ export function BotaoPresenca({ eventoId, gcmId, statusAtual }: Props) {
   if (statusAtual === "ACEITO") {
     return (
       <div className="flex gap-2">
-        <Button 
-          size="sm" 
-          variant="outline" 
+        <Button
+          size="sm"
+          variant="outline"
           className="text-green-600 border-green-200 hover:bg-green-50 h-8"
           onClick={() => handleAtualizar("CONFIRMADO")}
         >
-          <Check className="w-4 h-4 mr-1" /> Confirmar
+          <Check className="w-4 h-4 mr-1" /> Presente
         </Button>
-        
-        <Button 
-          size="sm" 
-          variant="outline" 
+
+        <Button
+          size="sm"
+          variant="outline"
           className="text-red-600 border-red-200 hover:bg-red-50 h-8"
-          onClick={() => handleAtualizar("FALTOU")}
+          onClick={() => handleAtualizar("AUSENTE")}
         >
           <X className="w-4 h-4 mr-1" /> Faltou
         </Button>

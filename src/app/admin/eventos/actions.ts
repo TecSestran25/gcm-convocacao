@@ -15,6 +15,8 @@ export async function criarEvento(formData: FormData) {
   const local = formData.get("local") as string
   const vagas = parseInt(formData.get("vagas") as string)
   const equipePrioritaria = formData.get("equipePrioritaria") as string
+  const slaMinutosRaw = formData.get("slaMinutos") as string | null
+  const slaMinutos = slaMinutosRaw ? parseInt(slaMinutosRaw, 10) : null
 
   // Busca o último evento criado no banco para saber o número
   const ultimoEvento = await prisma.evento.findFirst({
@@ -41,7 +43,8 @@ export async function criarEvento(formData: FormData) {
       horario,
       local,
       vagas,
-      equipePrioritaria
+      equipePrioritaria,
+      slaMinutos
     }
   })
 
@@ -116,7 +119,7 @@ export async function atualizarEvento(id: string, formData: FormData) {
     throw new Error(mensagemErro)
   }
 
-  const { codigo, dataServico, horario, local, vagas, equipePrioritaria } = validacao.data
+  const { codigo, dataServico, horario, local, vagas, equipePrioritaria, slaMinutos } = validacao.data
 
   await prisma.evento.update({
     where: { id },
@@ -127,6 +130,7 @@ export async function atualizarEvento(id: string, formData: FormData) {
       local: local.toUpperCase(),
       vagas,
       equipePrioritaria: equipePrioritaria.toUpperCase(),
+      slaMinutos: slaMinutos ?? null,
     }
   })
 

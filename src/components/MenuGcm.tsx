@@ -3,11 +3,16 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, ClipboardList, Clock, LogOut, Shield } from "lucide-react"
+import { Menu, X, ClipboardList, Clock, LogOut, Shield, ClipboardCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export function MenuGcm() {
+interface Props {
+  role?: string
+}
+
+export function MenuGcm({ role }: Props) {
   const [aberto, setAberto] = useState(false)
+  const podeFazerCheckin = role === "LIDER" || role === "SUPERVISOR"
   const pathname = usePathname()
 
   const fechar = () => setAberto(false)
@@ -56,6 +61,15 @@ export function MenuGcm() {
               Histórico de Escalas
             </Button>
           </Link>
+
+          {podeFazerCheckin && (
+            <Link href="/gcm/checkin" onClick={fechar}>
+              <Button variant={pathname.startsWith("/gcm/checkin") ? "default" : "ghost"} className={`w-full justify-start gap-3 h-12 text-md ${pathname.startsWith("/gcm/checkin") ? "bg-blue-600 text-white" : "text-slate-600"}`}>
+                <ClipboardCheck className="w-5 h-5" />
+                Check-in de Presença
+              </Button>
+            </Link>
+          )}
 
           <div className="border-t border-slate-200 my-4"></div>
 

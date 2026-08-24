@@ -25,12 +25,13 @@ export default async function RelatoriosPage() {
   // 1. Processa os dados de cada GCM primeiro (Individual)
   const relatorio = gcms.map(gcm => {
     const totalMissoes = gcm.convocacoes.length
-    const confirmados = gcm.convocacoes.filter(c => c.status === "CONFIRMADO").length
-    const faltas = gcm.convocacoes.filter(c => c.status === ("FALTOU" as typeof c.status)).length
+    // Só conta como "Plantão Realizado" quem teve a presença validada pelo Líder/Supervisor (Regra 6)
+    const confirmados = gcm.convocacoes.filter(c => c.status === "PRESENTE").length
+    const faltas = gcm.convocacoes.filter(c => c.status === "AUSENTE").length
     const recusados = gcm.convocacoes.filter(c => c.status === "RECUSADO").length
     const pendentes = gcm.convocacoes.filter(c => c.status === "PENDENTE" || c.status === "ACEITO").length
-    
-    // Estimativa de 12 horas por plantão confirmado
+
+    // Estimativa de 12 horas por plantão com presença validada
     const horasTrabalhadas = confirmados * 12
 
     return { ...gcm, totalMissoes, confirmados, faltas, recusados, pendentes, horasTrabalhadas }

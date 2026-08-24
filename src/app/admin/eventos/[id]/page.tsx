@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BotaoImprimir } from "@/components/BotaoImprimir"
 import { BotaoPresenca } from "@/components/BotaoPresenca"
 import { BotaoAutomacao } from "@/components/BotaoAutomacao"
+import { BotaoEscalonar } from "@/components/BotaoEscalonar"
 import { AutoRefresh } from "@/components/AutoRefresh"
+import { expirarConvocacoesVencidas } from "@/app/admin/eventos/automacao-actions"
 import Link from "next/link"
 
 // Ícones para dar um visual Premium
@@ -15,6 +17,8 @@ import { ArrowLeft, ShieldAlert, MapPin, CalendarDays, Users, Zap } from "lucide
 export default async function DetalhesEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
   
+  await expirarConvocacoesVencidas(false)
+
   const evento = await prisma.evento.findUnique({
     where: { id: resolvedParams.id },
     include: {
@@ -27,13 +31,32 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
 
   if (!evento) redirect("/admin/eventos")
 
-  const confirmados = evento.convocacoes.filter(c => c.status === "CONFIRMADO").length
+  const confirmados = evento.convocacoes.filter(c => c.status === "CONFIRMADO" || c.status === "ACEITO").length
   const limiteAtingido = confirmados >= evento.vagas
   const vagasRestantes = Math.max(0, evento.vagas - confirmados)
   const porcentagemVagas = Math.min((confirmados / evento.vagas) * 100, 100)
 
   // Filtra apenas os guardas confirmados para a folha de impressão
   const listaOficial = evento.convocacoes.filter(c => c.status === "CONFIRMADO")
+
+  // Regra 5 - Plano de Contingência: verifica se a fila da equipe prioritária
+  // se esgotou (todo o efetivo elegível já foi convocado neste evento)
+  const efetivoEquipePrioritaria = await prisma.usuario.count({
+    where: { role: { not: "ADMIN" }, equipe: evento.equipePrioritaria }
+  })
+  const convocadosEquipePrioritaria = evento.convocacoes.filter(
+    c => c.gcm.equipe === evento.equipePrioritaria
+  ).length
+  const filaEsgotada = efetivoEquipePrioritaria > 0 && convocadosEquipePrioritaria >= efetivoEquipePrioritaria
+
+  const equipesDistintas = await prisma.usuario.findMany({
+    where: { role: { not: "ADMIN" }, equipe: { not: null } },
+    select: { equipe: true },
+    distinct: ['equipe']
+  })
+  const equipesDisponiveis = equipesDistintas
+    .map(e => e.equipe as string)
+    .filter(equipe => equipe !== evento.equipePrioritaria)
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -127,6 +150,29 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
             </div>
           </div>
 
+          {/* Widget 3: Plano de Contingência (Escalonamento) */}
+          {filaEsgotada && vagasRestantes > 0 && (
+            <div className="col-span-1 md:col-span-3 bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl shadow-sm border border-amber-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 overflow-hidden">
+              <div className="flex-1 w-full">
+                <h3 className="font-bold text-amber-900 flex items-center gap-2 mb-2">
+                  <Users className="w-5 h-5 text-amber-600" />
+                  Fila da Equipe {evento.equipePrioritaria} Esgotada
+                </h3>
+                <p className="text-sm text-amber-700">
+                  Ainda há {vagasRestantes} vaga(s) em aberto. Escalone a convocação para a próxima equipe de folga.
+                </p>
+              </div>
+
+              <div className="w-full xl:w-auto bg-white p-2 rounded-xl shadow-sm border border-amber-100 shrink-0 overflow-x-auto">
+                <BotaoEscalonar
+                  eventoId={resolvedParams.id}
+                  vagasDisponiveis={vagasRestantes}
+                  equipesDisponiveis={equipesDisponiveis}
+                />
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* 3. TABELA DE RESPOSTAS */}
@@ -161,11 +207,13 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
                   <TableCell>
                     <Badge variant={
                       convocacao.status === "CONFIRMADO" ? "default" :
-                      convocacao.status === "ACEITO" ? "outline" : 
+                      convocacao.status === "PRESENTE" ? "default" :
+                      convocacao.status === "ACEITO" ? "outline" :
                       "destructive"
                     } className={
-                      convocacao.status === "CONFIRMADO" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" : 
-                      convocacao.status === "ACEITO" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : 
+                      convocacao.status === "CONFIRMADO" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" :
+                      convocacao.status === "PRESENTE" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" :
+                      convocacao.status === "ACEITO" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
                       "bg-red-50 text-red-700 hover:bg-red-50 border-transparent shadow-none"
                     }>
                       {convocacao.status === "CONFIRMADO" ? "HOMOLOGADO" : convocacao.status}

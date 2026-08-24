@@ -32,7 +32,12 @@ export function FormEvento() {
           <Input name="equipePrioritaria" required placeholder="Ex: ALFA" className="h-11 uppercase" />
         </div>
       </div>
-      
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-slate-700">Tempo limite para resposta (minutos)</label>
+        <Input name="slaMinutos" type="number" min="1" placeholder="Ex: 60 (deixe em branco para não expirar)" className="h-11" />
+      </div>
+
       <div className="pt-2">
         <Button type="submit" className="w-full h-12 text-md font-bold bg-blue-600 hover:bg-blue-700">
           Publicar Convocação

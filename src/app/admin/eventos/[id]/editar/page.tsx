@@ -59,6 +59,11 @@ export default async function EditarEventoPage({ params }: { params: Promise<{ i
           </div>
         </div>
 
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Tempo limite para resposta (minutos)</label>
+          <Input name="slaMinutos" type="number" min="1" defaultValue={evento.slaMinutos ?? ""} placeholder="Deixe em branco para não expirar" />
+        </div>
+
         <div className="flex gap-3 justify-end pt-2">
           <Link href="/admin/eventos">
             <Button type="button" variant="outline">Cancelar</Button>

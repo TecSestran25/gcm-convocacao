@@ -12,7 +12,7 @@ export default async function GcmLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="relative min-h-screen bg-slate-50 flex flex-col">
-      <MenuGcm />
+      <MenuGcm role={session?.user?.role} />
       <main className="flex-1">
         {children}
       </main>

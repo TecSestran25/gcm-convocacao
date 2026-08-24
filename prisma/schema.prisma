@@ -36,21 +36,23 @@ model Evento {
   tipoConvocacao    String       @default("NECESSIDADE OPERACIONAL DO SERVIÇO")
   vagas             Int
   equipePrioritaria String
+  slaMinutos        Int?
   observacoes       String?
   criadoEm          DateTime     @default(now())
   convocacoes       Convocacao[]
 }
 
 model Convocacao {
-  id           String           @id @default(uuid())
-  status       StatusConvocacao @default(PENDENTE)
-  dataResposta DateTime?
-  eventoId     String
-  gcmId        String
-  criadoEm     DateTime         @default(now())
-  atualizadoEm DateTime         @updatedAt
-  evento       Evento           @relation(fields: [eventoId], references: [id])
-  gcm          Usuario          @relation(fields: [gcmId], references: [id])
+  id            String           @id @default(uuid())
+  status        StatusConvocacao @default(PENDENTE)
+  dataResposta  DateTime?
+  dataLimiteSla DateTime?
+  eventoId      String
+  gcmId         String
+  criadoEm      DateTime         @default(now())
+  atualizadoEm  DateTime         @updatedAt
+  evento        Evento           @relation(fields: [eventoId], references: [id])
+  gcm           Usuario          @relation(fields: [gcmId], references: [id])
 
   @@unique([eventoId, gcmId])
 }
@@ -82,7 +84,9 @@ enum StatusConvocacao {
   ACEITO
   RECUSADO
   CONFIRMADO
+  PRESENTE
   AUSENTE
+  EXPIRADO
 }
 
 model PushSubscription {

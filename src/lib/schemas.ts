@@ -31,5 +31,9 @@ export const eventoSchema = z.object({
     (val) => parseInt(val as string, 10),
     z.number().min(1, "O evento deve ter pelo menos 1 vaga disponível")
   ),
-  equipePrioritaria: z.string().min(1, "A equipa alvo é obrigatória")
+  equipePrioritaria: z.string().min(1, "A equipa alvo é obrigatória"),
+  slaMinutos: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : parseInt(val as string, 10)),
+    z.number().min(1, "O prazo de resposta deve ser de pelo menos 1 minuto").optional()
+  )
 })
