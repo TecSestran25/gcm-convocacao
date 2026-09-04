@@ -40,6 +40,8 @@ model Evento {
   equipePrioritaria     String
   sequenciaEscalonamento String[]    @default([])
   slaMinutos            Int?
+  dataLimiteEscalacao   DateTime?
+  avisoPrazoEnviado     Boolean      @default(false)
   observacoes           String?
   criadoEm              DateTime     @default(now())
   convocacoes           Convocacao[]
@@ -51,6 +53,7 @@ model Convocacao {
   status        StatusConvocacao @default(PENDENTE)
   dataResposta  DateTime?
   dataLimiteSla DateTime?
+  observacaoIncidente String?
   validadoPorId String?
   validadoEm    DateTime?
   eventoId      String
@@ -105,6 +108,9 @@ enum StatusConvocacao {
   CONFIRMADO
   PRESENTE
   AUSENTE
+  ATRASADO
+  ATESTADO
+  TROCA
   EXPIRADO
 }
 

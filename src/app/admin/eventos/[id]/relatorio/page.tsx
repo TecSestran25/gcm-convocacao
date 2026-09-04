@@ -4,15 +4,18 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, FileText, Users, CheckCircle2, XCircle, HelpCircle, ThumbsUp } from "lucide-react"
+import { ArrowLeft, FileText, Users, CheckCircle2, XCircle, HelpCircle, ThumbsUp, AlertTriangle } from "lucide-react"
 
 const ROTULOS_STATUS: Record<string, string> = {
   PENDENTE: "Não respondeu (aguardando)",
   ACEITO: "Aceitou",
   RECUSADO: "Recusou",
-  CONFIRMADO: "Homologado (aguardando check-in)",
+  CONFIRMADO: "Escalado (aguardando check-in)",
   PRESENTE: "Presença Confirmada",
   AUSENTE: "Faltou",
+  ATRASADO: "Atrasou",
+  ATESTADO: "Atestado Médico",
+  TROCA: "Troca de Última Hora",
   EXPIRADO: "Não respondeu (prazo expirado)",
 }
 
@@ -34,9 +37,10 @@ export default async function RelatorioEventoPage({ params }: { params: Promise<
   const convocados = evento.convocacoes
   const recusaram = convocados.filter(c => c.status === "RECUSADO")
   const naoResponderam = convocados.filter(c => c.status === "PENDENTE" || c.status === "EXPIRADO")
-  const aceitaram = convocados.filter(c => ["ACEITO", "CONFIRMADO", "PRESENTE", "AUSENTE"].includes(c.status))
-  const presencaConfirmada = convocados.filter(c => c.status === "PRESENTE")
+  const aceitaram = convocados.filter(c => ["ACEITO", "CONFIRMADO", "PRESENTE", "AUSENTE", "ATRASADO", "ATESTADO", "TROCA"].includes(c.status))
+  const presencaConfirmada = convocados.filter(c => c.status === "PRESENTE" || c.status === "ATRASADO")
   const faltas = convocados.filter(c => c.status === "AUSENTE")
+  const imprevistos = convocados.filter(c => ["ATRASADO", "ATESTADO", "TROCA"].includes(c.status))
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
@@ -58,7 +62,7 @@ export default async function RelatorioEventoPage({ params }: { params: Promise<
       </div>
 
       {/* Placar resumido */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center gap-1">
           <Users className="w-5 h-5 text-slate-500" />
           <span className="text-2xl font-bold text-slate-900">{convocados.length}</span>
@@ -67,7 +71,7 @@ export default async function RelatorioEventoPage({ params }: { params: Promise<
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center gap-1">
           <ThumbsUp className="w-5 h-5 text-emerald-600" />
           <span className="text-2xl font-bold text-slate-900">{aceitaram.length}</span>
-          <span className="text-xs font-medium text-slate-500">Aceitaram</span>
+          <span className="text-xs font-medium text-slate-500">Escalados</span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center gap-1">
           <XCircle className="w-5 h-5 text-red-500" />
@@ -82,7 +86,12 @@ export default async function RelatorioEventoPage({ params }: { params: Promise<
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center gap-1">
           <CheckCircle2 className="w-5 h-5 text-blue-600" />
           <span className="text-2xl font-bold text-slate-900">{presencaConfirmada.length}</span>
-          <span className="text-xs font-medium text-slate-500">Presença Validada</span>
+          <span className="text-xs font-medium text-slate-500">Compareceram</span>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center text-center gap-1">
+          <AlertTriangle className="w-5 h-5 text-purple-500" />
+          <span className="text-2xl font-bold text-slate-900">{imprevistos.length}</span>
+          <span className="text-xs font-medium text-slate-500">Imprevistos</span>
         </div>
       </div>
 
@@ -104,7 +113,7 @@ export default async function RelatorioEventoPage({ params }: { params: Promise<
               <TableHead className="font-bold text-slate-700">Nome</TableHead>
               <TableHead className="font-bold text-slate-700">Equipe</TableHead>
               <TableHead className="font-bold text-slate-700">Status</TableHead>
-              <TableHead className="font-bold text-slate-700">Respondeu em</TableHead>
+              <TableHead className="font-bold text-slate-700">Observação</TableHead>
               <TableHead className="font-bold text-slate-700">Validado por</TableHead>
             </TableRow>
           </TableHeader>
@@ -128,13 +137,16 @@ export default async function RelatorioEventoPage({ params }: { params: Promise<
                     c.status === "RECUSADO" ? "bg-red-50 text-red-700 border-red-200" :
                     c.status === "CONFIRMADO" ? "bg-blue-50 text-blue-700 border-blue-200" :
                     c.status === "ACEITO" ? "bg-slate-100 text-slate-700 border-slate-200" :
+                    c.status === "ATRASADO" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    c.status === "ATESTADO" ? "bg-slate-200 text-slate-700 border-slate-300" :
+                    c.status === "TROCA" ? "bg-purple-50 text-purple-700 border-purple-200" :
                     "bg-amber-50 text-amber-700 border-amber-200"
                   }>
                     {ROTULOS_STATUS[c.status] ?? c.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-slate-500 text-sm">
-                  {c.dataResposta ? c.dataResposta.toLocaleString('pt-BR', { timeZone: 'UTC' }) : "-"}
+                <TableCell className="text-slate-500 text-sm max-w-xs">
+                  {c.observacaoIncidente || "-"}
                 </TableCell>
                 <TableCell className="text-slate-500 text-sm">
                   {c.validadoPor ? (

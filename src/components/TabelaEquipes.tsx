@@ -17,13 +17,16 @@ export function TabelaEquipes({ relatorioEquipes }: { relatorioEquipes: any[] })
               <th className="px-2 py-3 text-center">GCMs</th>
               <th className="px-2 py-3 text-center">Serviços</th>
               <th className="px-2 py-3 text-center">Horas</th>
+              <th className="px-2 py-3 text-center">Faltas</th>
+              <th className="px-2 py-3 text-center">Imprev.</th>
+              <th className="px-2 py-3 text-center">Em Aberto</th>
               <th className="px-4 py-3 text-right">Índice Part.</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {relatorioEquipes.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Nenhuma equipe com dados.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">Nenhuma equipe com dados.</td>
               </tr>
             ) : (
               relatorioEquipes.map((eq) => (
@@ -32,6 +35,9 @@ export function TabelaEquipes({ relatorioEquipes }: { relatorioEquipes: any[] })
                   <td className="px-2 py-3 text-center text-slate-600">{eq.totalGcms}</td>
                   <td className="px-2 py-3 text-center font-medium text-slate-900">{eq.totalServicos}</td>
                   <td className="px-2 py-3 text-center text-slate-600">{eq.horasTotais}h</td>
+                  <td className="px-2 py-3 text-center text-slate-600">{eq.faltasTotais}</td>
+                  <td className="px-2 py-3 text-center text-slate-600">{eq.imprevistosTotais}</td>
+                  <td className="px-2 py-3 text-center text-slate-600">{eq.pendentesTotais}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={`inline-flex items-center justify-center px-2 py-1 rounded font-bold text-xs ${
                       eq.indiceParticipacao >= 70 ? "bg-green-100 text-green-700" :
@@ -82,6 +88,22 @@ export function TabelaEquipes({ relatorioEquipes }: { relatorioEquipes: any[] })
                   <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Horas</span>
                   <span className="font-bold text-slate-600">{eq.horasTotais}h</span>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Faltas</span>
+                  <span className="font-bold text-slate-600">{eq.faltasTotais}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center border-l border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Imprevistos</span>
+                  <span className="font-bold text-slate-600">{eq.imprevistosTotais}</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] text-slate-500 uppercase font-semibold">Em Aberto (sem check-in)</span>
+                <span className="font-bold text-slate-600">{eq.pendentesTotais}</span>
               </div>
 
             </div>

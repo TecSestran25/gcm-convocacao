@@ -1,41 +1,42 @@
 // src/app/gcm/convocacoes/page.tsx
+// O GCM não escolhe mais aceitar/recusar: o Líder é quem escala (Etapa "Escalar Guardas").
+// Esta tela virou consulta somente leitura das escalas atuais/futuras deste GCM.
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
-import { responderConvocacao } from "./actions"
-import { Button } from "@/components/ui/button"
 import { BotaoAtivarNotificacoes } from "@/components/BotaoAtivarNotificacoes"
-// Importando ícones bonitos
-import { CalendarDays, MapPin, Users, ShieldAlert, CheckCircle2, XCircle } from "lucide-react"
+import { CalendarDays, MapPin, Users, ShieldAlert, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
+
+const ROTULOS_STATUS: Record<string, string> = {
+  CONFIRMADO: "Escalado",
+  PRESENTE: "Presença Confirmada",
+  AUSENTE: "Faltou",
+  ATRASADO: "Atrasou",
+  ATESTADO: "Atestado Médico",
+  TROCA: "Substituído",
+}
 
 export default async function ConvocacoesGcmPage() {
   const session = await auth()
   const gcmId = session?.user?.id
 
-  if (!gcmId) return null 
+  if (!gcmId) return null
 
   const guarda = await prisma.usuario.findUnique({
     where: { id: gcmId },
-    select: { equipe: true, nome: true } 
+    select: { equipe: true, nome: true }
   })
 
-  const minhaEquipe = guarda?.equipe || ""
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
 
-  const eventos = await prisma.evento.findMany({
+  const minhasEscalas = await prisma.convocacao.findMany({
     where: {
-      OR: [
-        { equipePrioritaria: minhaEquipe },
-        { equipePrioritaria: "TODAS" },
-        { equipePrioritaria: "GERAL" }
-      ]
+      gcmId,
+      evento: { dataServico: { gte: hoje } }
     },
-    orderBy: { dataServico: 'asc' }
+    include: { evento: true },
+    orderBy: { evento: { dataServico: 'asc' } }
   })
-
-  const minhasRespostas = await prisma.convocacao.findMany({
-    where: { gcmId }
-  })
-
-  const mapaRespostas = new Map(minhasRespostas.map(r => [r.eventoId, r.status]))
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
@@ -46,7 +47,7 @@ export default async function ConvocacoesGcmPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Olá, GCM {guarda?.nome?.split(" ")[0]}</h1>
-            <p className="text-slate-300 text-sm">Central de Escalas • Equipe {minhaEquipe}</p>
+            <p className="text-slate-300 text-sm">Minhas Escalas • Equipe {guarda?.equipe || ""}</p>
           </div>
         </div>
       </div>
@@ -57,37 +58,40 @@ export default async function ConvocacoesGcmPage() {
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold text-slate-800">Próximas Missões</h2>
           <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
-            {eventos.length} disponíveis
+            {minhasEscalas.length} escala(s)
           </span>
         </div>
 
         <div className="space-y-4">
-          {eventos.length === 0 && (
+          {minhasEscalas.length === 0 && (
             <div className="bg-white p-8 rounded-2xl border border-dashed border-slate-300 text-center shadow-sm">
               <ShieldAlert className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">Nenhuma escala para a sua equipe no momento.</p>
-              <p className="text-sm text-slate-400 mt-1">Avisaremos quando houver novidades.</p>
+              <p className="text-slate-500 font-medium">Você ainda não foi escalado para nenhuma missão.</p>
+              <p className="text-sm text-slate-400 mt-1">O Líder da sua equipe é quem define a escala.</p>
             </div>
           )}
 
-          {eventos.map((evento) => {
-            const statusAtual = mapaRespostas.get(evento.id) || "PENDENTE"
+          {minhasEscalas.map((escala) => {
+            const evento = escala.evento
+            const status = escala.status
 
             return (
-              <div key={evento.id} className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                
+              <div key={escala.id} className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm transition-all hover:shadow-md">
+
                 {/* Linha de Status Superior */}
                 <div className={`px-4 py-2 flex justify-between items-center text-xs font-bold ${
-                  statusAtual === "ACEITO" ? "bg-green-50 text-green-700 border-b border-green-100" :
-                  statusAtual === "RECUSADO" ? "bg-red-50 text-red-700 border-b border-red-100" : 
-                  statusAtual === "CONFIRMADO" ? "bg-blue-50 text-blue-700 border-b border-blue-100" : 
-                  "bg-amber-50 text-amber-700 border-b border-amber-100"
+                  status === "AUSENTE" ? "bg-red-50 text-red-700 border-b border-red-100" :
+                  status === "ATRASADO" ? "bg-amber-50 text-amber-700 border-b border-amber-100" :
+                  status === "TROCA" ? "bg-purple-50 text-purple-700 border-b border-purple-100" :
+                  status === "PRESENTE" ? "bg-emerald-50 text-emerald-700 border-b border-emerald-100" :
+                  "bg-blue-50 text-blue-700 border-b border-blue-100"
                 }`}>
                   <span>CÓDIGO: {evento.codigo}</span>
                   <span className="uppercase tracking-wider flex items-center gap-1">
-                    {statusAtual === "CONFIRMADO" && <CheckCircle2 className="w-3 h-3" />}
-                    {statusAtual === "RECUSADO" && <XCircle className="w-3 h-3" />}
-                    {statusAtual}
+                    {status === "PRESENTE" && <CheckCircle2 className="w-3 h-3" />}
+                    {status === "AUSENTE" && <XCircle className="w-3 h-3" />}
+                    {(status === "ATRASADO" || status === "ATESTADO" || status === "TROCA") && <AlertTriangle className="w-3 h-3" />}
+                    {ROTULOS_STATUS[status] ?? status}
                   </span>
                 </div>
 
@@ -97,7 +101,7 @@ export default async function ConvocacoesGcmPage() {
                     <MapPin className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-slate-800 font-semibold leading-tight">{evento.local}</p>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                     <div className="flex items-center gap-2 text-slate-600 text-sm">
                       <CalendarDays className="w-4 h-4 text-blue-500" />
@@ -105,39 +109,15 @@ export default async function ConvocacoesGcmPage() {
                     </div>
                     <div className="flex items-center gap-2 text-slate-600 text-sm">
                       <Users className="w-4 h-4 text-blue-500" />
-                      <span>Alvo: {evento.equipePrioritaria}</span>
+                      <span>Equipe: {evento.equipePrioritaria}</span>
                     </div>
                   </div>
-                </div>
 
-                {/* Área de Botões (Rodapé do Cartão) */}
-                <div className="p-4 bg-slate-50 flex gap-3 border-t border-slate-100">
-                  <form action={responderConvocacao.bind(null, evento.id, "ACEITO")} className="flex-1">
-                    <Button 
-                      type="submit" 
-                      className={`w-full font-bold h-11 rounded-xl transition-all ${
-                        statusAtual === "CONFIRMADO" ? "bg-blue-600 hover:bg-blue-700 shadow-md" :
-                        statusAtual === "ACEITO" ? "bg-green-600 hover:bg-green-700 shadow-md" : 
-                        "bg-white text-green-700 border-2 border-green-600 hover:bg-green-50"
-                      }`}
-                      disabled={statusAtual === "ACEITO" || statusAtual === "CONFIRMADO"}
-                    >
-                      {statusAtual === "CONFIRMADO" ? "Homologado" : statusAtual === "ACEITO" ? "Aceito" : "Aceitar Escala"}
-                    </Button>
-                  </form>
-                  
-                  <form action={responderConvocacao.bind(null, evento.id, "RECUSADO")} className="flex-1">
-                    <Button 
-                      type="submit" 
-                      variant="outline"
-                      className={`w-full font-bold h-11 rounded-xl transition-all ${
-                        statusAtual === "RECUSADO" ? "bg-red-50 text-red-700 border-red-200" : "text-slate-600 hover:text-red-600 hover:border-red-200"
-                      }`}
-                      disabled={statusAtual === "RECUSADO" || statusAtual === "CONFIRMADO"}
-                    >
-                      {statusAtual === "RECUSADO" ? "Recusado" : "Recusar"}
-                    </Button>
-                  </form>
+                  {escala.observacaoIncidente && (
+                    <p className="text-xs text-slate-500 italic bg-slate-50 border border-slate-100 rounded-md p-2">
+                      &quot;{escala.observacaoIncidente}&quot;
+                    </p>
+                  )}
                 </div>
               </div>
             )
