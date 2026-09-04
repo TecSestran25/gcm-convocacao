@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, ClipboardList, Clock, LogOut, Shield, ClipboardCheck } from "lucide-react"
+import { Menu, X, ClipboardList, Clock, LogOut, Shield, ClipboardCheck, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface Props {
@@ -51,7 +51,7 @@ export function MenuGcm({ role }: Props) {
           <Link href="/gcm/convocacoes" onClick={fechar}>
             <Button variant={pathname === "/gcm/convocacoes" ? "default" : "ghost"} className={`w-full justify-start gap-3 h-12 text-md ${pathname === "/gcm/convocacoes" ? "bg-blue-600 text-white" : "text-slate-600"}`}>
               <ClipboardList className="w-5 h-5" />
-              Missões Ativas
+              Minhas Escalas
             </Button>
           </Link>
           
@@ -61,6 +61,15 @@ export function MenuGcm({ role }: Props) {
               Histórico de Escalas
             </Button>
           </Link>
+
+          {podeFazerCheckin && (
+            <Link href="/gcm/escalar" onClick={fechar}>
+              <Button variant={pathname.startsWith("/gcm/escalar") ? "default" : "ghost"} className={`w-full justify-start gap-3 h-12 text-md ${pathname.startsWith("/gcm/escalar") ? "bg-blue-600 text-white" : "text-slate-600"}`}>
+                <UserCheck className="w-5 h-5" />
+                Escalar Guardas
+              </Button>
+            </Link>
+          )}
 
           {podeFazerCheckin && (
             <Link href="/gcm/checkin" onClick={fechar}>

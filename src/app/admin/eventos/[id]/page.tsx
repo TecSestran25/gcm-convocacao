@@ -4,20 +4,24 @@ import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { BotaoImprimir } from "@/components/BotaoImprimir"
-import { BotaoPresenca } from "@/components/BotaoPresenca"
-import { BotaoAutomacao } from "@/components/BotaoAutomacao"
-import { BotaoEscalonar } from "@/components/BotaoEscalonar"
 import { AutoRefresh } from "@/components/AutoRefresh"
-import { expirarConvocacoesVencidas } from "@/app/admin/eventos/automacao-actions"
+import { STATUS_OCUPA_VAGA } from "@/lib/escala-ordinaria"
 import Link from "next/link"
 
 // Ícones para dar um visual Premium
-import { ArrowLeft, ShieldAlert, MapPin, CalendarDays, Users, Zap } from "lucide-react"
+import { ArrowLeft, ShieldAlert, MapPin, CalendarDays, Users } from "lucide-react"
+
+const BADGE_STATUS: Record<string, { rotulo: string; className: string }> = {
+  CONFIRMADO: { rotulo: "HOMOLOGADO", className: "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" },
+  PRESENTE: { rotulo: "PRESENTE", className: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" },
+  ACEITO: { rotulo: "ACEITO", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  ATRASADO: { rotulo: "ATRASADO", className: "bg-amber-100 text-amber-700 border-amber-200" },
+  ATESTADO: { rotulo: "ATESTADO", className: "bg-slate-200 text-slate-700 border-slate-300" },
+  TROCA: { rotulo: "TROCA (vaga reaberta)", className: "bg-purple-100 text-purple-700 border-purple-200" },
+}
 
 export default async function DetalhesEventoPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params
-  
-  await expirarConvocacoesVencidas(false)
 
   const evento = await prisma.evento.findUnique({
     where: { id: resolvedParams.id },
@@ -25,38 +29,20 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
       convocacoes: {
         include: { gcm: true },
         orderBy: { dataResposta: 'asc' }
-      }
+      },
+      validadores: { select: { nome: true } }
     }
   })
 
   if (!evento) redirect("/admin/eventos")
 
-  const confirmados = evento.convocacoes.filter(c => c.status === "CONFIRMADO" || c.status === "ACEITO").length
+  // TROCA reabre a vaga para um substituto, então não conta como ocupada
+  const confirmados = evento.convocacoes.filter(c => STATUS_OCUPA_VAGA.includes(c.status)).length
   const limiteAtingido = confirmados >= evento.vagas
-  const vagasRestantes = Math.max(0, evento.vagas - confirmados)
   const porcentagemVagas = Math.min((confirmados / evento.vagas) * 100, 100)
 
   // Filtra apenas os guardas confirmados para a folha de impressão
   const listaOficial = evento.convocacoes.filter(c => c.status === "CONFIRMADO")
-
-  // Regra 5 - Plano de Contingência: verifica se a fila da equipe prioritária
-  // se esgotou (todo o efetivo elegível já foi convocado neste evento)
-  const efetivoEquipePrioritaria = await prisma.usuario.count({
-    where: { role: { not: "ADMIN" }, equipe: evento.equipePrioritaria }
-  })
-  const convocadosEquipePrioritaria = evento.convocacoes.filter(
-    c => c.gcm.equipe === evento.equipePrioritaria
-  ).length
-  const filaEsgotada = efetivoEquipePrioritaria > 0 && convocadosEquipePrioritaria >= efetivoEquipePrioritaria
-
-  const equipesDistintas = await prisma.usuario.findMany({
-    where: { role: { not: "ADMIN" }, equipe: { not: null } },
-    select: { equipe: true },
-    distinct: ['equipe']
-  })
-  const equipesDisponiveis = equipesDistintas
-    .map(e => e.equipe as string)
-    .filter(equipe => equipe !== evento.equipePrioritaria)
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -134,56 +120,25 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
             )}
           </div>
 
-          {/* Widget 2: Sistema de Fila Automática */}
-          <div className="col-span-1 md:col-span-2 bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 overflow-hidden">
-            <div className="flex-1 w-full">
-              <h3 className="font-bold text-blue-900 flex items-center gap-2 mb-2">
-                <Zap className="w-5 h-5 text-blue-600 fill-blue-600" /> 
-                Acionamento Automático
-              </h3>
-              <p className="text-sm text-blue-700">
-                Precisa de mais guardas? Utilize a automação para convocar os próximos disponíveis da fila (Equipe {evento.equipePrioritaria}) enviando notificações imediatas.
-              </p>
-            </div>
-            
-            <div className="w-full xl:w-auto bg-white p-2 rounded-xl shadow-sm border border-blue-100 shrink-0 overflow-x-auto">
-              <BotaoAutomacao 
-                eventoId={resolvedParams.id} 
-                equipeAlvo={evento.equipePrioritaria}
-                vagasDisponiveis={vagasRestantes}
-              />
-            </div>
+          {/* Widget 2: Responsáveis pela Escala */}
+          <div className="col-span-1 md:col-span-2 bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100 flex flex-col justify-center gap-2">
+            <h3 className="font-bold text-blue-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              Responsáveis pela Escala
+            </h3>
+            <p className="text-sm text-blue-700">
+              {evento.validadores.length > 0
+                ? `${evento.validadores.map(v => v.nome).join(", ")} — notificado(s) para preencher e validar a escala da equipe ${evento.equipePrioritaria} pelo app.`
+                : "Nenhum Líder/Supervisor delegado para este evento."}
+            </p>
           </div>
-
-          {/* Widget 3: Plano de Contingência (Escalonamento) */}
-          {filaEsgotada && vagasRestantes > 0 && (
-            <div className="col-span-1 md:col-span-3 bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl shadow-sm border border-amber-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 overflow-hidden">
-              <div className="flex-1 w-full">
-                <h3 className="font-bold text-amber-900 flex items-center gap-2 mb-2">
-                  <Users className="w-5 h-5 text-amber-600" />
-                  Fila da Equipe {evento.equipePrioritaria} Esgotada
-                </h3>
-                <p className="text-sm text-amber-700">
-                  Ainda há {vagasRestantes} vaga(s) em aberto. Escalone a convocação para a próxima equipe de folga.
-                </p>
-              </div>
-
-              <div className="w-full xl:w-auto bg-white p-2 rounded-xl shadow-sm border border-amber-100 shrink-0 overflow-x-auto">
-                <BotaoEscalonar
-                  eventoId={resolvedParams.id}
-                  vagasDisponiveis={vagasRestantes}
-                  equipesDisponiveis={equipesDisponiveis}
-                />
-              </div>
-            </div>
-          )}
 
         </div>
 
         {/* 3. TABELA DE RESPOSTAS */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <h2 className="font-bold text-slate-800 text-lg">Respostas do Efetivo ({evento.convocacoes.length})</h2>
+            <h2 className="font-bold text-slate-800 text-lg">Efetivo Escalado ({evento.convocacoes.length})</h2>
           </div>
           <Table>
             <TableHeader className="bg-slate-50">
@@ -191,16 +146,15 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
                 <TableHead className="font-bold text-slate-700 w-[120px]">Matrícula</TableHead>
                 <TableHead className="font-bold text-slate-700">Nome</TableHead>
                 <TableHead className="font-bold text-slate-700 w-[160px]">Status</TableHead>
-                <TableHead className="text-right font-bold text-slate-700 w-[250px]">Ação do Comando</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {evento.convocacoes.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-slate-500 py-12">
+                  <TableCell colSpan={3} className="text-center text-slate-500 py-12">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Users className="w-8 h-8 text-slate-300" />
-                      <p>Nenhuma resposta recebida até o momento.</p>
+                      <p>Nenhum guarda escalado até o momento.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -210,28 +164,9 @@ export default async function DetalhesEventoPage({ params }: { params: Promise<{
                   <TableCell className="font-medium text-slate-600">{convocacao.gcm.matricula}</TableCell>
                   <TableCell className="font-bold text-slate-900">{convocacao.gcm.nome}</TableCell>
                   <TableCell>
-                    <Badge variant={
-                      convocacao.status === "CONFIRMADO" ? "default" :
-                      convocacao.status === "PRESENTE" ? "default" :
-                      convocacao.status === "ACEITO" ? "outline" :
-                      "destructive"
-                    } className={
-                      convocacao.status === "CONFIRMADO" ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm" :
-                      convocacao.status === "PRESENTE" ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" :
-                      convocacao.status === "ACEITO" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                      "bg-red-50 text-red-700 hover:bg-red-50 border-transparent shadow-none"
-                    }>
-                      {convocacao.status === "CONFIRMADO" ? "HOMOLOGADO" : convocacao.status}
+                    <Badge variant="outline" className={BADGE_STATUS[convocacao.status]?.className ?? "bg-red-50 text-red-700 border-transparent shadow-none"}>
+                      {BADGE_STATUS[convocacao.status]?.rotulo ?? convocacao.status}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end w-full">
-                      <BotaoPresenca 
-                        eventoId={resolvedParams.id} 
-                        gcmId={convocacao.gcmId} 
-                        statusAtual={convocacao.status} 
-                      />
-                    </div>
                   </TableCell>
                 </TableRow>
               ))}

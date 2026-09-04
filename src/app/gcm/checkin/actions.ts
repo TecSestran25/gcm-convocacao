@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 
-export async function registrarCheckin(eventoId: string, gcmId: string, novoStatus: "PRESENTE" | "AUSENTE") {
+export async function registrarCheckin(
+  eventoId: string,
+  gcmId: string,
+  novoStatus: "PRESENTE" | "AUSENTE" | "ATRASADO" | "ATESTADO" | "TROCA",
+  observacao?: string
+) {
   const session = await auth()
   const role = session?.user?.role
   const validadorId = session?.user?.id
@@ -26,10 +31,17 @@ export async function registrarCheckin(eventoId: string, gcmId: string, novoStat
 
   await prisma.convocacao.update({
     where: { eventoId_gcmId: { eventoId, gcmId } },
-    data: { status: novoStatus, validadoPorId: validadorId, validadoEm: new Date() }
+    data: {
+      status: novoStatus,
+      validadoPorId: validadorId,
+      validadoEm: new Date(),
+      observacaoIncidente: observacao?.trim() || null
+    }
   })
 
   revalidatePath(`/gcm/checkin/${eventoId}`)
   revalidatePath(`/gcm/checkin`)
+  revalidatePath(`/gcm/escalar/${eventoId}`)
+  revalidatePath(`/gcm/escalar`)
   revalidatePath(`/admin/eventos/${eventoId}`)
 }

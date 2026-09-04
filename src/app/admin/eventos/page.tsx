@@ -8,16 +8,20 @@ import { BotaoAcao } from "@/components/BotaoAcao"
 import { ModalNovoEvento } from "@/components/ModalNovoEvento"
 import { TabelaEventos } from "@/components/TabelaEventos"
 import { buscarDadosFormularioEvento } from "@/lib/dados-formulario-evento"
+import { verificarPrazosDeEscalacao } from "./escalacao-actions"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
 const ITENS_POR_PAGINA = 10
 
-export default async function EventosPage({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ q?: string, page?: string, sort?: string, order?: string }> 
+export default async function EventosPage({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string, page?: string, sort?: string, order?: string }>
 }) {
+  // Avisa o Comando se algum Líder deixou o prazo de escalação vencer sem preencher as vagas
+  await verificarPrazosDeEscalacao(false)
+
   const resolvedParams = await searchParams
   const termoPesquisa = resolvedParams.q || ""
   const paginaAtual = Number(resolvedParams.page) || 1

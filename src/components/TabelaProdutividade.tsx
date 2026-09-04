@@ -3,7 +3,7 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle2, Clock, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { CheckCircle2, Clock, XCircle, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function TabelaProdutividade({ relatorio }: { relatorio: any[] }) {
@@ -30,12 +30,14 @@ export function TabelaProdutividade({ relatorio }: { relatorio: any[] }) {
               <th className="px-4 py-3 text-center">Horas Est.</th>
               <th className="px-4 py-3 text-center">Recusas</th>
               <th className="px-4 py-3 text-center">Faltas</th>
+              <th className="px-4 py-3 text-center">Imprevistos</th>
+              <th className="px-4 py-3 text-center">Em Aberto</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {dadosPaginados.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                   Nenhum dado operacional registrado.
                 </td>
               </tr>
@@ -75,6 +77,18 @@ export function TabelaProdutividade({ relatorio }: { relatorio: any[] }) {
                       <span className="text-slate-400">0</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    {gcm.imprevistos > 0 ? (
+                      <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
+                        <AlertTriangle className="w-4 h-4" /> {gcm.imprevistos}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">0</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-500">
+                    {gcm.pendentes}
+                  </td>
                 </tr>
               ))
             )}
@@ -101,7 +115,7 @@ export function TabelaProdutividade({ relatorio }: { relatorio: any[] }) {
                 </span>
               </div>
               
-              <div className="grid grid-cols-4 gap-2 pt-3 border-t border-slate-100">
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100">
                 <div className="flex flex-col items-center justify-center">
                   <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Presenças</span>
                   <span className="font-bold text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/>{gcm.confirmados}</span>
@@ -111,12 +125,22 @@ export function TabelaProdutividade({ relatorio }: { relatorio: any[] }) {
                   <span className="font-bold text-slate-700">{gcm.horasTrabalhadas}h</span>
                 </div>
                 <div className="flex flex-col items-center justify-center border-l border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Faltas</span>
+                  <span className={`font-bold ${gcm.faltas > 0 ? "text-red-600" : "text-slate-400"}`}>{gcm.faltas}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100">
+                <div className="flex flex-col items-center justify-center">
                   <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Recusas</span>
                   <span className="font-bold text-slate-600">{gcm.recusados}</span>
                 </div>
                 <div className="flex flex-col items-center justify-center border-l border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Faltas</span>
-                  <span className={`font-bold ${gcm.faltas > 0 ? "text-red-600" : "text-slate-400"}`}>{gcm.faltas}</span>
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Imprev.</span>
+                  <span className={`font-bold ${gcm.imprevistos > 0 ? "text-amber-600" : "text-slate-400"}`}>{gcm.imprevistos}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center border-l border-slate-100">
+                  <span className="text-[10px] text-slate-500 uppercase font-semibold mb-1">Em Aberto</span>
+                  <span className="font-bold text-slate-600">{gcm.pendentes}</span>
                 </div>
               </div>
             </div>

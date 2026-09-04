@@ -20,7 +20,7 @@ export default async function CheckinEventoPage({ params }: { params: Promise<{ 
     where: { id: eventoId },
     include: {
       convocacoes: {
-        where: { status: { in: ["CONFIRMADO", "PRESENTE", "AUSENTE"] } },
+        where: { status: { in: ["CONFIRMADO", "PRESENTE", "AUSENTE", "ATRASADO", "ATESTADO", "TROCA"] } },
         include: { gcm: true },
         orderBy: { gcm: { nome: 'asc' } }
       },
@@ -78,6 +78,7 @@ export default async function CheckinEventoPage({ params }: { params: Promise<{ 
                     eventoId={evento.id}
                     gcmId={convocacao.gcmId}
                     statusAtual={convocacao.status}
+                    observacaoAtual={convocacao.observacaoIncidente}
                   />
                 </div>
               ))}

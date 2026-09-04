@@ -2,7 +2,7 @@
 // src/app/admin/relatorios/page.tsx
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { BarChart3, CheckCircle2, XCircle, AlertTriangle, Users, Shield } from "lucide-react"
+import { BarChart3, CheckCircle2, XCircle, AlertTriangle, Users, Shield, ShieldAlert } from "lucide-react"
 import { TabelaProdutividade } from "@/components/TabelaProdutividade"
 import { TabelaEquipes } from "@/components/TabelaEquipes"
 
@@ -25,16 +25,21 @@ export default async function RelatoriosPage() {
   // 1. Processa os dados de cada GCM primeiro (Individual)
   const relatorio = gcms.map(gcm => {
     const totalMissoes = gcm.convocacoes.length
-    // Só conta como "Plantão Realizado" quem teve a presença validada pelo Líder/Supervisor (Regra 6)
-    const confirmados = gcm.convocacoes.filter(c => c.status === "PRESENTE").length
+    // Só conta como "Plantão Realizado" quem teve a presença validada pelo Líder/Supervisor (Regra 6).
+    // Atrasado ainda cumpriu o plantão (com ressalva); Atestado/Troca não contam como trabalhado.
+    const confirmados = gcm.convocacoes.filter(c => c.status === "PRESENTE" || c.status === "ATRASADO").length
     const faltas = gcm.convocacoes.filter(c => c.status === "AUSENTE").length
     const recusados = gcm.convocacoes.filter(c => c.status === "RECUSADO").length
-    const pendentes = gcm.convocacoes.filter(c => c.status === "PENDENTE" || c.status === "ACEITO").length
+    const pendentes = gcm.convocacoes.filter(c => c.status === "PENDENTE" || c.status === "ACEITO" || c.status === "CONFIRMADO").length
+    // Ocorrências a destacar (inclui quem trabalhou atrasado)
+    const imprevistos = gcm.convocacoes.filter(c => ["ATRASADO", "ATESTADO", "TROCA"].includes(c.status)).length
+    // Foi escalado mas não prestou o serviço (para o índice de participação abaixo) — exclui atrasado, que trabalhou
+    const naoCompareceu = gcm.convocacoes.filter(c => ["AUSENTE", "ATESTADO", "TROCA"].includes(c.status)).length
 
     // Estimativa de 12 horas por plantão com presença validada
     const horasTrabalhadas = confirmados * 12
 
-    return { ...gcm, totalMissoes, confirmados, faltas, recusados, pendentes, horasTrabalhadas }
+    return { ...gcm, totalMissoes, confirmados, faltas, recusados, pendentes, imprevistos, naoCompareceu, horasTrabalhadas }
   })
 
   // 2. Agrupa os dados por Equipe
@@ -49,7 +54,11 @@ export default async function RelatoriosPage() {
         totalGcms: 0,
         totalServicos: 0,
         horasTotais: 0,
-        recusasTotais: 0
+        recusasTotais: 0,
+        faltasTotais: 0,
+        imprevistosTotais: 0,
+        naoCompareceuTotais: 0,
+        pendentesTotais: 0
       })
     }
 
@@ -58,16 +67,22 @@ export default async function RelatoriosPage() {
     equipeStats.totalServicos += gcm.confirmados
     equipeStats.horasTotais += gcm.horasTrabalhadas
     equipeStats.recusasTotais += gcm.recusados
+    equipeStats.faltasTotais += gcm.faltas
+    equipeStats.imprevistosTotais += gcm.imprevistos
+    equipeStats.naoCompareceuTotais += gcm.naoCompareceu
+    equipeStats.pendentesTotais += gcm.pendentes
   })
 
-  // Converte o Map de volta para um Array e calcula o Índice de Participação
+  // Converte o Map de volta para um Array e calcula o Índice de Participação:
+  // de tudo que já foi decidido (trabalhou, recusou, faltou, atestado ou trocado),
+  // qual fração efetivamente prestou o serviço. Atrasado conta como "trabalhou".
   const relatorioEquipes = Array.from(relatorioEquipesMap.values()).map(eq => {
-    const totalConvocaçõesNaEquipe = eq.totalServicos + eq.recusasTotais
+    const totalDecididoNaEquipe = eq.totalServicos + eq.recusasTotais + eq.naoCompareceuTotais
     // Evita divisão por zero
-    const indiceParticipacao = totalConvocaçõesNaEquipe > 0 
-      ? Math.round((eq.totalServicos / totalConvocaçõesNaEquipe) * 100) 
+    const indiceParticipacao = totalDecididoNaEquipe > 0
+      ? Math.round((eq.totalServicos / totalDecididoNaEquipe) * 100)
       : 0
-      
+
     return { ...eq, indiceParticipacao }
   }).sort((a, b) => a.equipe.localeCompare(b.equipe)) // Ordem alfabética
 
@@ -76,6 +91,9 @@ export default async function RelatoriosPage() {
   const totalConfirmadosGeral = relatorio.reduce((acc, gcm) => acc + gcm.confirmados, 0)
   const totalRecusasGeral = relatorio.reduce((acc, gcm) => acc + gcm.recusados, 0)
   const totalFaltasGeral = relatorio.reduce((acc, gcm) => acc + gcm.faltas, 0)
+  const totalImprevistosGeral = relatorio.reduce((acc, gcm) => acc + gcm.imprevistos, 0)
+  // Escalado(s) cujo check-in ainda não foi feito pelo Líder (não conta nem como presença, nem como falta)
+  const totalAguardandoCheckinGeral = relatorio.reduce((acc, gcm) => acc + gcm.pendentes, 0)
 
   return (
     <div className="space-y-6">
@@ -87,7 +105,7 @@ export default async function RelatoriosPage() {
       {/* ========================================== */}
       {/* PLACAR GERAL (Métricas do Comando)         */}
       {/* ========================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="shadow-sm">
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-blue-100 text-blue-700 rounded-lg"><Users className="w-6 h-6" /></div>
@@ -124,6 +142,28 @@ export default async function RelatoriosPage() {
             <div>
               <p className="text-sm font-medium text-slate-500">Faltas Registradas</p>
               <h3 className="text-2xl font-bold text-red-600">{totalFaltasGeral}</h3>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-purple-100">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-purple-100 text-purple-700 rounded-lg"><ShieldAlert className="w-6 h-6" /></div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Imprevistos</p>
+              <h3 className="text-2xl font-bold text-slate-900">{totalImprevistosGeral}</h3>
+              <p className="text-[11px] text-slate-400">Atraso, atestado ou troca</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-slate-100 text-slate-600 rounded-lg"><Users className="w-6 h-6" /></div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Em Aberto</p>
+              <h3 className="text-2xl font-bold text-slate-900">{totalAguardandoCheckinGeral}</h3>
+              <p className="text-[11px] text-slate-400">Escalados sem check-in ainda</p>
             </div>
           </CardContent>
         </Card>

@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { eventoSchema } from "@/lib/schemas"
 
-// Importamos o motor de automação que dispara os Pushs e cria a fila
-import { convocarFilaAutomatica } from "./automacao-actions" 
+// Motor novo: notifica o(s) Líder(es) responsável(is) para que preencham as vagas manualmente
+import { notificarLideresParaEscalar } from "./escalacao-actions"
 
 export async function criarEvento(formData: FormData) {
   const dataServico = new Date(formData.get("dataServico") as string)
@@ -23,11 +23,15 @@ export async function criarEvento(formData: FormData) {
     .map((posicao) => formData.get(`escalonamento${posicao}`) as string | null)
     .filter((equipe): equipe is string => !!equipe && equipe !== equipePrioritaria)
 
-  // Delegação de validação: obrigatório indicar ao menos um líder/supervisor
+  // Delegação: obrigatório indicar ao menos um líder/supervisor responsável por
+  // preencher as vagas e, depois, validar a presença deste evento
   const validadoresIds = formData.getAll("validadores").map(String).filter(Boolean)
   if (validadoresIds.length === 0) {
-    throw new Error("Selecione ao menos um Líder ou Supervisor autorizado a validar a presença deste evento.")
+    throw new Error("Selecione ao menos um Líder ou Supervisor responsável por este evento.")
   }
+
+  // Prazo para o(s) Líder(es) preencherem as vagas (Regra 4 - nova versão)
+  const dataLimiteEscalacao = slaMinutos ? new Date(Date.now() + slaMinutos * 60_000) : null
 
   // Busca o último evento criado no banco para saber o número
   const ultimoEvento = await prisma.evento.findFirst({
@@ -57,25 +61,21 @@ export async function criarEvento(formData: FormData) {
       equipePrioritaria,
       sequenciaEscalonamento,
       slaMinutos,
+      dataLimiteEscalacao,
       validadores: { connect: validadoresIds.map(id => ({ id })) }
     }
   })
 
   // =========================================================
-  // 2. GATILHO DA CONVOCAÇÃO AUTOMÁTICA
+  // 2. NOTIFICA O(S) LÍDER(ES) RESPONSÁVEL(IS) PARA PREENCHER AS VAGAS
   // =========================================================
-  // Só dispara se o alvo for uma equipe específica. 
-  // (Evita erro se o Comando selecionar "GERAL" ou "TODAS")
-  if (equipePrioritaria !== "TODAS" && equipePrioritaria !== "GERAL") {
-    // Chama exatamente a quantidade de vagas solicitadas e já dispara os Pushs!
-    await convocarFilaAutomatica(novoEvento.id, equipePrioritaria, vagas)
-  }
+  await notificarLideresParaEscalar(novoEvento.id)
 
   // 3. Disparar uma notificação informando a criação do evento no painel
   await prisma.notificacao.create({
     data: {
       titulo: "Nova Convocação Criada",
-      mensagem: `A missão ${novoCodigo} foi gerada para a equipe ${equipePrioritaria} e a fila foi acionada.`,
+      mensagem: `A missão ${novoCodigo} foi gerada para a equipe ${equipePrioritaria}. O(s) responsável(is) foi(ram) notificado(s) para preencher as vagas.`,
       tipo: "INFO"
     }
   })
@@ -99,30 +99,6 @@ export async function eliminarEvento(id: string) {
   revalidatePath("/admin/eventos")
 }
 
-export async function homologarGuarda(eventoId: string, gcmId: string) {
-  // Passa o guarda para a escala oficial
-  await prisma.convocacao.update({
-    where: {
-      eventoId_gcmId: { eventoId, gcmId }
-    },
-    data: { status: "CONFIRMADO" }
-  })
-
-  revalidatePath(`/admin/eventos/${eventoId}`)
-}
-
-export async function removerHomologacao(eventoId: string, gcmId: string) {
-  // Retira o guarda da escala oficial e devolve para a fila de espera
-  await prisma.convocacao.update({
-    where: {
-      eventoId_gcmId: { eventoId, gcmId }
-    },
-    data: { status: "ACEITO" }
-  })
-
-  revalidatePath(`/admin/eventos/${eventoId}`)
-}
-
 export async function atualizarEvento(id: string, formData: FormData) {
   const dadosBrutos = Object.fromEntries(formData.entries())
   const validacao = eventoSchema.safeParse(dadosBrutos)
@@ -143,8 +119,12 @@ export async function atualizarEvento(id: string, formData: FormData) {
 
   const validadoresIds = formData.getAll("validadores").map(String).filter(Boolean)
   if (validadoresIds.length === 0) {
-    throw new Error("Selecione ao menos um Líder ou Supervisor autorizado a validar a presença deste evento.")
+    throw new Error("Selecione ao menos um Líder ou Supervisor responsável por este evento.")
   }
+
+  // Recalcula o prazo do Líder a partir de agora (permite "estender o prazo" editando o evento)
+  // e reabre o aviso de prazo vencido para ser reavaliado contra o novo prazo
+  const dataLimiteEscalacao = slaMinutos ? new Date(Date.now() + slaMinutos * 60_000) : null
 
   await prisma.evento.update({
     where: { id },
@@ -157,9 +137,15 @@ export async function atualizarEvento(id: string, formData: FormData) {
       sequenciaEscalonamento,
       vagas,
       slaMinutos: slaMinutos ?? null,
+      dataLimiteEscalacao,
+      avisoPrazoEnviado: false,
       validadores: { set: validadoresIds.map(id => ({ id })) }
     }
   })
+
+  // Renotifica os responsáveis (cobre tanto a extensão de prazo quanto a
+  // reatribuição manual para um novo Líder/equipe ao editar o evento)
+  await notificarLideresParaEscalar(id)
 
   revalidatePath("/admin/eventos")
   redirect("/admin/eventos")
